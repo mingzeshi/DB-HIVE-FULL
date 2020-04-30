@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+        <name>schema.path</name>
+        <value>/jlcstore/datamerge_schema/schema.json</value>
+    </property>
+
+    <property>
+        <name>distill.dir</name>
+        <value>/jlc/distill_data/</value>
+    </property>
+
+    <property>
+        <name>mapreduce.job.reduces</name>
+        <value>10</value>
+    </property>
+
+    <property>
+        <name>import.db.config.path</name>
+        <value>C:/Users/Administrator/Desktop/文件/20190821/stock_market/ImportConfig.xml</value>
+    </property>
+
+    <property>
+        <name>hdfs.load.hive.dw.path</name>
+        <value>C:/Users/Administrator/Desktop/文件/20190821/stock_market/LoadToHiveStorage.xml</value>
+    </property>
+
+    <property>
+        <name>hdfs.load.hive.ods.path</name>
+        <value>C:/Users/Administrator/Desktop/文件/20190821/stock_market/LoadToHiveODS.xml</value>
+    </property>
+
+    <property>
+        <name>hive.data.process.other</name>
+        <value>/hive_process/other_one/stock_market/</value>
+    </property>
+
+    <property>
+        <name>map.task.batch.count</name>
+        <value>3000000</value>
+    </property>
+
+    <property>
+        <name>mapreduce.job.queuename</name>
+        <value>xstorm</value>
+    </property>
+
+    <property>
+        <name>mapred.job.map.capacity</name>
+        <value>100</value>
+    </property>
+
+    <property>
+        <name>mapred.job.reduce.capacity</name>
+        <value>100</value>
+    </property>
+
+    <property>
+        <name>import.db.connection.open</name>
+        <value>true</value>
+    </property>
+<!-- 
+<property>
+    <name>mapreduce.map.memory.mb</name>
+    <value>4096</value>
+</property>
+
+<property>
+    <name>mapreduce.reduce.memory.mb</name>
+    <value>4096</value>
+</property>
+ -->
+    <!-- 构建切片时，是否启用查询条件 -->
+    <property>
+        <name>create.spliter.isCondition</name>
+        <value>false</value>
+    </property>
+
+    <!-- <property>
+        <name>mapreduce.job.running.map.limit</name>
+        <value>300</value>
+    </property>
+    <property>
+        <name>mapreduce.job.running.reduce.limit</name>
+        <value>300</value>
+    </property> -->
+	<!--
+	<property>
+	    <name>custom.dw.export</name>
+	    <value>/files/20190715/db/stock_market_storage_bak</value>
+	</property>
+	<property>
+	    <name>custom.ods.export</name>
+	    <value>/files/20190715/db/stock_market_ods10</value>
+	</property>
+	<property>
+	    <name>custom.dw.logday</name>
+	    <value>2019-07-10</value>
+	</property>
+	-->
+	
+	<property>
+	    <name>export.ods.bak.dir</name>
+	    <value>_export</value>
+	</property>
+	<property>
+	    <name>job.name.db</name>
+	    <value>stock_market_ods</value>
+	</property>
+</configuration>
