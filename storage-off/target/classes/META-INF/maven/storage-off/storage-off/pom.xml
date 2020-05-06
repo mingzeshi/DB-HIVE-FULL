@@ -188,7 +188,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>com.jy.util.HadoopAppDriver</mainClass>
+							<mainClass>org.frozen.util.HadoopAppDriver</mainClass>
 						</manifest>
 					</archive>
 				</configuration>

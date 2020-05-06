@@ -2,5 +2,5 @@ Manifest-Version: 1.0
 Built-By: Administrator
 Build-Jdk: 1.8.0_102
 Created-By: Maven Integration for Eclipse
-Main-Class: com.jy.util.HadoopAppDriver
+Main-Class: org.frozen.util.HadoopAppDriver
 
