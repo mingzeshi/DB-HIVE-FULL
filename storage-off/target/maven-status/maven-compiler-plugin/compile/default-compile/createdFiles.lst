@@ -9,7 +9,7 @@ com\jy\pb\ObjectData$ObjectBase$1.class
 com\jy\pb\ObjectData$ObjectInfo$Builder.class
 com\jy\test\JsonToBean.class
 com\jy\test\DistinctMR$DistinctMRMap.class
-com\jy\bean\importDBBean\ImportRDBDataSet.class
+com\jy\bean\importDBBean\ImportRDB_XMLDataSet.class
 com\jy\compress\CompressMR$CompressMRMapper.class
 com\jy\test\JsonTest.class
 com\jy\mr\datadrivendbinputformat\MySQLDataDrivenDBRecordReader.class
@@ -158,7 +158,7 @@ com\jy\test\TestStrs.class
 com\jy\pb\ObjectData$ObjectInfo$1.class
 com\jy\hive\HiveUtil.class
 com\jy\pb\ObjectData$ObjectKey.class
-com\jy\bean\importDBBean\ImportRDBDataSetDB.class
+com\jy\bean\importDBBean\ImportRDB_XMLDataSetDB.class
 com\jy\monitoring\TableBalance.class
 com\jy\test\orc\TestORCWrite$OrcWriterMapper.class
 com\jy\util\DateUtils.class

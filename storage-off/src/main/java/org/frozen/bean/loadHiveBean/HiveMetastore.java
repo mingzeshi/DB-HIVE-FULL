@@ -2,6 +2,10 @@ package org.frozen.bean.loadHiveBean;
 
 import java.util.List;
 
+/**
+ * hive元数据信息所在数据库的一些数据库配置信息
+ *
+ */
 public class HiveMetastore {
 
 	private String enname; // 数据库英文名称

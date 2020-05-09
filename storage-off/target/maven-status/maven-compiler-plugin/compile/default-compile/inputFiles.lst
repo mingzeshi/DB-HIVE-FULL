@@ -92,7 +92,7 @@ D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\test\TestMultipleO
 D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\mr\sequenceinputformat\OWFileSplit.java
 D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\bean\loadHiveBean\hdfsLoadHiveODSBean\HiveODSField.java
 D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\test\TestHashMap.java
-D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\bean\importDBBean\ImportRDBDataSetDB.java
+D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\bean\importDBBean\ImportRDB_XMLDataSetDB.java
 D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\test\TestNumberSplit.java
 D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\test\TestHashSet.java
 D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\test\TestDateStr.java
@@ -108,7 +108,7 @@ D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\monitoring\TableBa
 D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\test\TestComparable.java
 D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\mr\dbinputformat\MySQLDBRecordReader.java
 D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\bean\loadHiveBean\HiveMetastore.java
-D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\bean\importDBBean\ImportRDBDataSet.java
+D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\bean\importDBBean\ImportRDB_XMLDataSet.java
 D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\bean\loadHiveBean\HiveField.java
 D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\test\TestArgs.java
 D:\my-workspace\workspace_mr\storage-off\src\main\java\com\jy\test\TestSetRemoveAll.java

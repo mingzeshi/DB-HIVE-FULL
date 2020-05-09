@@ -20,17 +20,17 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.frozen.bean.importDBBean.ImportRDBDataSet;
-import org.frozen.bean.importDBBean.ImportRDBDataSetDB;
+import org.frozen.bean.importDBBean.ImportRDB_XMLDataSet;
+import org.frozen.bean.importDBBean.ImportRDB_XMLDataSetDB;
 import org.frozen.bean.loadHiveBean.HiveDataBase;
+import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.bean.loadHiveBean.HiveMetastore;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveDWBean.HiveDWDataSet;
 import org.frozen.util.JDBCUtil;
 import org.frozen.util.XmlUtil;
 import org.frozen.vo.Tuple;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException;
 
 /**
@@ -105,7 +105,7 @@ public class TableBalance {
 			log.info("---------------------------check database connection and tables exists ===START===" + timeFormat + "---------------------------");
 			
 			try {
-				ImportRDBDataSetDB importRDBDataSetDB = XmlUtil.parserXml(importConfigPath, "tables");
+				ImportRDB_XMLDataSetDB importRDBDataSetDB = XmlUtil.parserXml(importConfigPath, "tables");
 				
 				String jdbcUrl = importRDBDataSetDB.getUrl();
 				
@@ -136,7 +136,7 @@ public class TableBalance {
 				Set<String> tables = tableBalance.showTables(tableBalance.showTablesSQL); // db全表
 				
 				Set<String> hiveConfigTable = new HashSet<String>();
-				for(ImportRDBDataSet importRDBDataSet : importRDBDataSetDB.getImportRDBDataSet()) {
+				for(ImportRDB_XMLDataSet importRDBDataSet : importRDBDataSetDB.getImportRDB_XMLDataSet()) {
 					hiveConfigTable.add(importRDBDataSet.getEnname().replace("`", ""));
 				}
 				
@@ -187,7 +187,7 @@ public class TableBalance {
 			  */
 
 			try {
-				ImportRDBDataSetDB importRDBDataSetDB = XmlUtil.parserXml(importConfigPath, "db");
+				ImportRDB_XMLDataSetDB importRDBDataSetDB = XmlUtil.parserXml(importConfigPath, "db");
 				
 				String jdbcUrl = importRDBDataSetDB.getUrl();
 				
@@ -438,14 +438,14 @@ public class TableBalance {
 
 		List<HiveDataBase> dataBaseList = hiveMetastore.getHiveDataBaseList();
 		
-		for (HiveDataBase<HiveDWDataSet> dataBase : dataBaseList) {
+		for (HiveDataBase<HiveDataSet> dataBase : dataBaseList) {
 			String dbName = dataBase.getEnnameH();
 			
 			this.hiveDatabaseName = dbName;
 
-			List<HiveDWDataSet> dataSetList = dataBase.getHiveDataSetList();
+			List<HiveDataSet> dataSetList = dataBase.getHiveDataSetList();
 
-			for (HiveDWDataSet dataSet : dataSetList) {
+			for (HiveDataSet dataSet : dataSetList) {
 
 				String keyM = dataSet.getEnnameM();
 				String keyH = dataSet.getEnnameH();

@@ -3,16 +3,15 @@ package org.frozen.metastore;
 import java.sql.Connection;
 import java.util.List;
 
-import net.sf.json.JSONArray;
-
 import org.frozen.bean.loadHiveBean.HiveDataBase;
+import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.bean.loadHiveBean.HiveMetastore;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveDWBean.HiveDWDataSet;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveODSBean.HiveODSDataSet;
 import org.frozen.constant.Constants;
 import org.frozen.util.JDBCUtil;
 import org.frozen.util.JedisOperation;
 import org.frozen.util.XmlUtil;
+
+import net.sf.json.JSONArray;
 
 
 public class HiveTableSchema {
@@ -31,13 +30,13 @@ public class HiveTableSchema {
 		
 		List<HiveDataBase> zkdataBaseList = dwhiveMetastore.getHiveDataBaseList();
 		
-		for(HiveDataBase<HiveDWDataSet> dataBase : zkdataBaseList) {
+		for(HiveDataBase<HiveDataSet> dataBase : zkdataBaseList) {
 			String dbName = dataBase.getEnnameH();
 			JedisOperation.putForMap(Constants.HIVE_DB_LOCATION, dbName, JDBCUtil.getHiveDBLocation(connection, dbName), -1);
 			
-			List<HiveDWDataSet> zkDataSetList = dataBase.getHiveDataSetList();
+			List<HiveDataSet> zkDataSetList = dataBase.getHiveDataSetList();
 			
-			for(HiveDWDataSet zkDataSet : zkDataSetList) {
+			for(HiveDataSet zkDataSet : zkDataSetList) {
 				
 				JedisOperation.putForMap(Constants.HIVE_TAB_SCHEAM, dbName + Constants.SPECIALCOMMA + zkDataSet.getEnnameH().toLowerCase(), JSONArray.fromObject(JDBCUtil.getHiveTabColumns(connection, dataBase.getEnnameH().toLowerCase(), zkDataSet.getEnnameH().toLowerCase())).toString(), -1);
 			}
@@ -51,13 +50,13 @@ public class HiveTableSchema {
 		
 		List<HiveDataBase> odsdataBaseList = odshiveMetastore.getHiveDataBaseList();
 		
-		for(HiveDataBase<HiveODSDataSet> dataBase : odsdataBaseList) {
+		for(HiveDataBase<HiveDataSet> dataBase : odsdataBaseList) {
 			String dbName = dataBase.getEnnameH();
 			JedisOperation.putForMap(Constants.HIVE_DB_LOCATION, dbName, JDBCUtil.getHiveDBLocation(connection, dbName), -1);
 			
-			List<HiveODSDataSet> odsDataSetList = dataBase.getHiveDataSetList();
+			List<HiveDataSet> odsDataSetList = dataBase.getHiveDataSetList();
 			
-			for(HiveODSDataSet odsDataSet : odsDataSetList) {
+			for(HiveDataSet odsDataSet : odsDataSetList) {
 				
 				JedisOperation.putForMap(Constants.HIVE_TAB_SCHEAM, dbName + Constants.SPECIALCOMMA + odsDataSet.getEnnameH().toLowerCase(), JSONArray.fromObject(JDBCUtil.getHiveTabColumns(connection, dataBase.getEnnameH().toLowerCase(), odsDataSet.getEnnameH().toLowerCase())).toString(), -1);
 			}

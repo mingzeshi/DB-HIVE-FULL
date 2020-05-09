@@ -15,8 +15,12 @@ import org.apache.hadoop.mapreduce.lib.db.DBWritable;
 import org.frozen.constant.Constants;
 
 /**
- * @author Administrator
- *
+ * MR程序通用的数据导出类，一个对象表示一条数据
+ * 
+ * db:该条数据的db实例名
+ * table:该条数据的表名
+ * title:该条数据所有的field，用固定符号隔开
+ * data:该条数据所有的数据，用固定符号隔开
  */
 public class ImportDataBean implements Writable,DBWritable {
 	

@@ -26,8 +26,8 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.db.DBConfiguration;
 import org.apache.hadoop.mapreduce.lib.db.DBWritable;
 
-import org.frozen.bean.importDBBean.ImportRDBDataSet;
-import org.frozen.bean.importDBBean.ImportRDBDataSetDB;
+import org.frozen.bean.importDBBean.ImportRDB_XMLDataSet;
+import org.frozen.bean.importDBBean.ImportRDB_XMLDataSetDB;
 import org.frozen.constant.Constants;
 import org.frozen.util.XmlUtil;
 
@@ -188,9 +188,9 @@ public class CustomDBInputFormat<T extends DBWritable> extends InputFormat<LongW
 		Statement statement = null;
 		try {
 			Configuration configuration = job.getConfiguration();
-			ImportRDBDataSetDB dataSetDB = XmlUtil.parserXml(configuration.get("import.db.config.path"), null); // 获取配置文件需要导入的所有表
+			ImportRDB_XMLDataSetDB dataSetDB = XmlUtil.parserXml(configuration.get("import.db.config.path"), null); // 获取配置文件需要导入的所有表
 			String db = dataSetDB.getEnname();
-			List<ImportRDBDataSet> dataSetList = dataSetDB.getImportRDBDataSet();
+			List<ImportRDB_XMLDataSet> dataSetList = dataSetDB.getImportRDB_XMLDataSet();
 			
 			Long batchCount = configuration.getLong("map.task.batch.count", 500000); // maptask处理数据量
 			
@@ -201,7 +201,7 @@ public class CustomDBInputFormat<T extends DBWritable> extends InputFormat<LongW
 			List<InputSplit> splits = new ArrayList<InputSplit>();
 
 			// 构建整库全表split切片
-			for(ImportRDBDataSet dataSet : dataSetList) { // 循环每张表
+			for(ImportRDB_XMLDataSet dataSet : dataSetList) { // 循环每张表
 				String tableName = dataSet.getEnname();
 				
 				results = statement.executeQuery(getCountQuery(tableName)); // 查询表count

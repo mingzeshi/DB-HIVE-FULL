@@ -79,13 +79,11 @@ public interface Constants {
     Integer REDIS_PORT = 6480; // 端口
     Integer MAX_ATTEMPTS = 10; //最多尝试次数
     Integer EXPIRE_SECONDS = 3 * 24 * 60 * 60; //过期时间
-
-    // redis中存储：hive元数据相关key
-    String HIVE_DB_LOCATION = "hive_db_location";
-    String HIVE_TAB_SCHEAM = "hive_tab_schema";
     
-    String HIVE_DW_LOCATION_CONF = "hive.db.dw.location"; // hive-db-location路径在configuration中存储key
-    String HIVE_ODS_LOCATION_CONF = "hive.db.ods.location"; // hive-db-location路径在configuration中存储key
-    String HIVE_DB_DW = "hive.db.dw"; // hive近源数据层快照层db
-    String HIVE_DB_ODS = "hive.db.ods"; // hive近源数据层应用层db
+    // 分区表标识 P
+    String PART_MARK = "P";
+    
+    // 文件输出位置-配置项后缀Hive、HDFS
+    String LOCATION_HIVE = ".hive";
+    String LOCATION_HDFS = ".hdfs";
 }

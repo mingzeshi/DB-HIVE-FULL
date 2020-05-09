@@ -8,19 +8,19 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
+import org.frozen.bean.importDBBean.ImportRDB_XMLDataSet;
+import org.frozen.bean.importDBBean.ImportRDB_XMLDataSetDB;
+import org.frozen.bean.loadHiveBean.HiveDataBase;
+import org.frozen.bean.loadHiveBean.HiveMetastore;
+import org.frozen.bean.loadHiveBean.HiveDataSet;
+import org.frozen.util.JDBCUtil;
+import org.frozen.util.XmlUtil;
 
 import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlSchemaStatVisitor;
 import com.alibaba.druid.stat.TableStat.Condition;
 import com.alibaba.druid.util.JdbcConstants;
-import org.frozen.bean.importDBBean.ImportRDBDataSet;
-import org.frozen.bean.importDBBean.ImportRDBDataSetDB;
-import org.frozen.bean.loadHiveBean.HiveDataBase;
-import org.frozen.bean.loadHiveBean.HiveMetastore;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveDWBean.HiveDWDataSet;
-import org.frozen.util.JDBCUtil;
-import org.frozen.util.XmlUtil;
 
 public class ExportConditions {
 	public static void main(String[] args) {
@@ -38,14 +38,14 @@ public class ExportConditions {
 			return;
 		}
 		
-		ImportRDBDataSetDB importRDBDataSetDB = XmlUtil.parserXml(importConfigPath, "tables");
+		ImportRDB_XMLDataSetDB importRDBDataSetDB = XmlUtil.parserXml(importConfigPath, "tables");
 		
 		Map<String, String> hiveTablesODS = readXML(loadToODSPath);
 		Map<String, String> hiveTablesStorage = readXML(loadToStoragePath);
 		
-		List<ImportRDBDataSet> importRDBDataSet = importRDBDataSetDB.getImportRDBDataSet();
+		List<ImportRDB_XMLDataSet> importRDBDataSet = importRDBDataSetDB.getImportRDB_XMLDataSet();
 		
-		for(ImportRDBDataSet dataSet : importRDBDataSet) {
+		for(ImportRDB_XMLDataSet dataSet : importRDBDataSet) {
 			String conditions = dataSet.getConditions();
 			if(StringUtils.isNotBlank(conditions)) {
 				String dbTab = dataSet.getEnname();
@@ -97,12 +97,12 @@ public class ExportConditions {
 
 		List<HiveDataBase> dataBaseList = hiveMetastore.getHiveDataBaseList();
 		
-		for (HiveDataBase<HiveDWDataSet> dataBase : dataBaseList) {
+		for (HiveDataBase<HiveDataSet> dataBase : dataBaseList) {
 			String hiveName = dataBase.getEnnameH();
 
-			List<HiveDWDataSet> dataSetList = dataBase.getHiveDataSetList();
+			List<HiveDataSet> dataSetList = dataBase.getHiveDataSetList();
 
-			for (HiveDWDataSet dataSet : dataSetList) {
+			for (HiveDataSet dataSet : dataSetList) {
 
 				String keyM = dataSet.getEnnameM();
 				String keyH = dataSet.getEnnameH();

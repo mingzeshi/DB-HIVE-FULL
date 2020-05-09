@@ -30,8 +30,8 @@ import org.apache.hadoop.mapreduce.lib.db.DBConfiguration;
 import org.apache.hadoop.mapreduce.lib.db.DBInputFormat;
 import org.apache.hadoop.mapreduce.lib.db.DBWritable;
 
-import org.frozen.bean.importDBBean.ImportRDBDataSet;
-import org.frozen.bean.importDBBean.ImportRDBDataSetDB;
+import org.frozen.bean.importDBBean.ImportRDB_XMLDataSet;
+import org.frozen.bean.importDBBean.ImportRDB_XMLDataSetDB;
 import org.frozen.bean.loadHiveBean.HiveMetastore;
 import org.frozen.bean.loadHiveBean.hdfsLoadHiveDWBean.HiveDWDataSet;
 import org.frozen.bean.loadHiveBean.hdfsLoadHiveODSBean.HiveODSDataSet;
@@ -222,9 +222,9 @@ public class CustomDataDrivenDBInputFormat<T extends DBWritable> extends DBInput
 		
 		try {
 
-			ImportRDBDataSetDB dataSetDB = XmlUtil.parserXml(configuration.get("import.db.config.path"), null); // 获取配置文件需要导入的所有表
+			ImportRDB_XMLDataSetDB dataSetDB = XmlUtil.parserXml(configuration.get("import.db.config.path"), null); // 获取配置文件需要导入的所有表
 			String db = dataSetDB.getEnname();
-			List<ImportRDBDataSet> dataSetList = dataSetDB.getImportRDBDataSet();
+			List<ImportRDB_XMLDataSet> dataSetList = dataSetDB.getImportRDB_XMLDataSet();
 
 //			Long batchCount = configuration.getLong("map.task.batch.count", 3000000); // maptask处理数据量
 
@@ -238,7 +238,7 @@ public class CustomDataDrivenDBInputFormat<T extends DBWritable> extends DBInput
 			String fullDoseDay = configuration.get("conditions.full.dose.day", "07"); // 每月某日拉取全量数据
 
 			// 构建整库全表split切片
-			for (ImportRDBDataSet dataSet : dataSetList) { // 循环每张表
+			for (ImportRDB_XMLDataSet dataSet : dataSetList) { // 循环每张表
 				String tableName = dataSet.getEnname();
 				String splitCol = dataSet.getUniqueKey(); // 主键
 				String conditions = dataSet.getConditions();

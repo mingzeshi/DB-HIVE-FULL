@@ -1,0 +1,34 @@
+package org.frozen.constant;
+
+/**
+ * mapreduce任务中configuration配置项
+ */
+public interface ConfigConstants {
+	
+	String IMPORT_DB_CONFIG_PATH = "import.db.config.path";
+	
+	String IMPORT_DB_DRIVER = "import_db_driver";
+	String IMPORT_DB_URL = "import.db_url";
+	String IMPORT_DB_USERNAME = "import.db.username";
+	String IMPORT_DB_PASSWORD = "import.db.password";
+	
+	String LOAD_HIVE_CONFIG = "load.hive.config";
+
+	
+	// redis中存储：hive元数据相关key
+    String HIVE_DB_LOCATION = "hive_db_location";
+    String HIVE_TAB_SCHEAM = "hive_tab_schema";
+    
+    /**
+     * 以下配置项，是后缀
+     * 由于可以输出至多个Hive-Location，hc1,hcP1,hc2,hcP2
+     * 拼接后：
+     * 		hc1.hive.db.location, hc1.hive.db
+     * 		hcP1.hive.db.location, hcP1.hive.db
+     * 		hc2.hive.db.location, hc2.hive.db
+     * 		hcP2.hive.db.location, hcP2.hive.db
+     */
+    String HIVE_LOCATION = "hive.db.location"; // Hive-DB-Location路径
+    String HIVE_DB = "hive.db"; // Hive-DB
+
+}

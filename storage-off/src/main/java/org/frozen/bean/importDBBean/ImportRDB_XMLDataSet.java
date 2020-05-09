@@ -5,7 +5,7 @@ package org.frozen.bean.importDBBean;
  * @author Administrator
  *
  */
-public class ImportRDBDataSet {
+public class ImportRDB_XMLDataSet {
 
 	private String enname; // 英文名称
 	private String chname; // 中文名称
@@ -15,10 +15,10 @@ public class ImportRDBDataSet {
 	private String fields; // 字段配置项
 	private String description; // 描述信息
 
-	public ImportRDBDataSet() {
+	public ImportRDB_XMLDataSet() {
 	}
 
-	public ImportRDBDataSet(String enname, String chname, String uniqueKey, String storage, String conditions, String fields, String description) {
+	public ImportRDB_XMLDataSet(String enname, String chname, String uniqueKey, String storage, String conditions, String fields, String description) {
 		this.enname = enname;
 		this.chname = chname;
 		this.uniqueKey = uniqueKey;

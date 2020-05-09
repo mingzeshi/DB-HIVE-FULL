@@ -3,8 +3,8 @@ package org.frozen.exec;
 import java.util.List;
 
 import org.frozen.bean.loadHiveBean.HiveDataBase;
+import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.bean.loadHiveBean.HiveMetastore;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveODSBean.HiveODSDataSet;
 import org.frozen.util.DateUtils;
 import org.frozen.util.XmlUtil;
 
@@ -15,9 +15,9 @@ public class GenerateMVODS {
 
 		HiveMetastore hiveODSMetastore = XmlUtil.parserHdfsLoadToHiveODSXML(path, null); // 获取近源数据应用层配置文件相关信息
 		
-		HiveDataBase<HiveODSDataSet> odsdataBase = hiveODSMetastore.getHiveDataBaseList().get(0);
+		HiveDataBase<HiveDataSet> odsdataBase = hiveODSMetastore.getHiveDataBaseList().get(0);
 		
-		List<HiveODSDataSet> hiveODSdataSetList = odsdataBase.getHiveDataSetList();
+		List<HiveDataSet> hiveODSdataSetList = odsdataBase.getHiveDataSetList();
 		
 //		String hive_ods_db_location = JedisOperation.getForMap(Constants.HIVE_DB_LOCATION, odsdataBase.getEnnameH()); // 获取hive-db的location路径
 String hive_ods_db_location = "/app_hive/warehouse/product_ods.db";
@@ -26,9 +26,9 @@ String hive_ods_db_location = "/app_hive/warehouse/product_ods.db";
 		String bakDir = "/jlc/ods_hive_bak";
 		
 		System.out.println("------START------");
-		for(HiveODSDataSet odsDataSet : hiveODSdataSetList) {
+		for(HiveDataSet dataSet : hiveODSdataSetList) {
 			
-			String command = mvCommand + hive_ods_db_location + "/" + odsDataSet.getEnnameH() + " " + bakDir + "/" + DateUtils.getYesterdayDate() + "/" + odsdataBase.getEnnameH() + "/";
+			String command = mvCommand + hive_ods_db_location + "/" + dataSet.getEnnameH() + " " + bakDir + "/" + DateUtils.getYesterdayDate() + "/" + odsdataBase.getEnnameH() + "/";
 			System.out.println(command);
 		}
 		System.out.println("------END------");

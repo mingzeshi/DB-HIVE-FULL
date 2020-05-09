@@ -8,7 +8,7 @@ import java.util.List;
  * @author Administrator
  *
  */
-public class ImportRDBDataSetDB {
+public class ImportRDB_XMLDataSetDB {
 
 	private String enname; // 数据库英文名称
 	private String chname; // 数据库中文名称
@@ -17,12 +17,12 @@ public class ImportRDBDataSetDB {
 	private String username; // 用户名
 	private String password; // 密码
 	private String description; // 描述
-	private List<ImportRDBDataSet> importRDBDataSet; // 数据库下表集合
+	private List<ImportRDB_XMLDataSet> importRDBDataSet; // 数据库下表集合
 
-	public ImportRDBDataSetDB() {
+	public ImportRDB_XMLDataSetDB() {
 	}
 
-	public ImportRDBDataSetDB(String enname, String chname, String driver, String url, String username, String password, String description, List<ImportRDBDataSet> importRDBDataSet) {
+	public ImportRDB_XMLDataSetDB(String enname, String chname, String driver, String url, String username, String password, String description, List<ImportRDB_XMLDataSet> importRDBDataSet) {
 		this.enname = enname;
 		this.chname = chname;
 		this.driver = driver;
@@ -89,11 +89,11 @@ public class ImportRDBDataSetDB {
 		this.description = description;
 	}
 
-	public List<ImportRDBDataSet> getImportRDBDataSet() {
+	public List<ImportRDB_XMLDataSet> getImportRDB_XMLDataSet() {
 		return importRDBDataSet;
 	}
 
-	public void setImportRDBDataSet(List<ImportRDBDataSet> importRDBDataSet) {
+	public void setImportRDB_XMLDataSet(List<ImportRDB_XMLDataSet> importRDBDataSet) {
 		this.importRDBDataSet = importRDBDataSet;
 	}
 
