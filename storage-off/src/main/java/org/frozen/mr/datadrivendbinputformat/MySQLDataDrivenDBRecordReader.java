@@ -10,6 +10,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.lib.db.DBConfiguration;
 import org.apache.hadoop.mapreduce.lib.db.DBWritable;
+import org.frozen.constant.ConfigConstants;
 
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
@@ -23,7 +24,7 @@ public class MySQLDataDrivenDBRecordReader<T extends DBWritable> extends DataDri
   protected ResultSet executeQuery(String query) throws SQLException {
 	 PreparedStatement statement = getConnection().prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
 //    statement.setFetchSize(Integer.MIN_VALUE); // MySQL: read row-at-a-time.
-	 statement.setFetchSize(getConfiguration() == null ? Integer.MIN_VALUE : getConfiguration().getInt("jdbc.fetch.size", Integer.MIN_VALUE));
+	 statement.setFetchSize(getConfiguration() == null ? Integer.MIN_VALUE : getConfiguration().getInt(ConfigConstants.JDBC_FETCH_SIZE, Integer.MIN_VALUE));
     return statement.executeQuery();
   }
 }
