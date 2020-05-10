@@ -17,6 +17,8 @@ public interface ConfigConstants {
 	String IMPORT_DB_CONNECTION_OPEN = "import.db.connection.open";
 	String IS_CONDITIONS_FULL_DOSE_DAY = "is.conditions.full.dose.day";
 	String CONDITIONS_FULL_DOSE_DAY = "conditions.full.dose.day";
+	
+	String JDBC_FETCH_SIZE = "jdbc.fetch.size";
 
 	
 	// redis中存储：hive元数据相关key
