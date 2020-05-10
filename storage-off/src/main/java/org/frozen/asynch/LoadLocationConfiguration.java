@@ -40,15 +40,15 @@ public class LoadLocationConfiguration implements Runnable {
 		
 		for(String cfg : tConfigs) { // 循环每个输出-配置文件
 			
-			String location_hive = configuration.get(cfg + Constants.LOCATION_HIVE);
+			String location_hive_config = configuration.get(cfg + Constants.LOCATION_HIVE);
 			
-			if(StringUtils.isBlank(location_hive))
+			if(StringUtils.isBlank(location_hive_config))
 				throw BuildDriverException.NO_HIVE_TAB_CONFIG;
 
 			/**
 			 * 加载输出到Hive表-XML配置文件
 			 */
-			HiveMetastore hiveMetastore = XmlUtil.parserLoadToHiveXML(location_hive, "db");
+			HiveMetastore hiveMetastore = XmlUtil.parserLoadToHiveXML(location_hive_config, "db");
 			HiveDataBase<HiveDataSet> dataBaseList = hiveMetastore.getHiveDataBaseList().get(0); // 获取hive-db的location
 			
 			String hive_db_location = JedisOperation.getForMap(ConfigConstants.HIVE_DB_LOCATION, dataBaseList.getEnnameH()); // 获取HiveDB的Location路径

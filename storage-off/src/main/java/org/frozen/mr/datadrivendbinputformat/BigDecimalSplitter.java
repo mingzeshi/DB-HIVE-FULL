@@ -23,6 +23,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -31,6 +32,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.MRJobConfig;
+import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.constant.Constants;
 
 /**
@@ -38,10 +40,10 @@ import org.frozen.constant.Constants;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class BigDecimalSplitter implements DBSplitter {
+public class BigDecimalSplitter implements DBSplitter_Develop {
 	private static final Log LOG = LogFactory.getLog(BigDecimalSplitter.class);
 
-	public List<InputSplit> split(Configuration conf, ResultSet results, String colName, HiveDWDataSet hiveDWDataSet, HiveODSDataSet hiveODSDataSet) throws SQLException {
+	public List<InputSplit> split(Configuration conf, ResultSet results, String colName, Map<String, HiveDataSet> hiveDataSetMap) throws SQLException {
 		String db = conf.get(Constants.SPLITTERDB);
 		String table = conf.get(Constants.SPLITTERTABLE);
 		String conditions = conf.get(Constants.SPLITTERCONDITIONS);
@@ -59,7 +61,7 @@ public class BigDecimalSplitter implements DBSplitter {
 		if (minVal == null && maxVal == null) {
 			// Range is null to null. Return a null split accordingly.
 			List<InputSplit> splits = new ArrayList<InputSplit>();
-			splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+			splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDataSetMap));
 			return splits;
 		}
 
@@ -81,10 +83,10 @@ public class BigDecimalSplitter implements DBSplitter {
 
 			if (i == splitPoints.size() - 1) {
 				// This is the last one; use a closed interval.
-				splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(lowClausePrefix + start.toString(), colName + " <= " + end.toString(), db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+				splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(lowClausePrefix + start.toString(), colName + " <= " + end.toString(), db, table, conditions, fields, hiveDataSetMap));
 			} else {
 				// Normal open-interval case.
-				splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(lowClausePrefix + start.toString(), highClausePrefix + end.toString(), db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+				splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(lowClausePrefix + start.toString(), highClausePrefix + end.toString(), db, table, conditions, fields, hiveDataSetMap));
 			}
 
 			start = end;

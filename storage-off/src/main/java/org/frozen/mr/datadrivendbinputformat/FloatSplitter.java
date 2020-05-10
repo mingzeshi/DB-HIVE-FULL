@@ -4,6 +4,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -12,20 +13,18 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.MRJobConfig;
-
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveDWBean.HiveDWDataSet;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveODSBean.HiveODSDataSet;
+import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.constant.Constants;
 
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class FloatSplitter implements DBSplitter {
+public class FloatSplitter implements DBSplitter_Develop {
 
 	private static final Log LOG = LogFactory.getLog(FloatSplitter.class);
 
 	private static final double MIN_INCREMENT = 10000 * Double.MIN_VALUE;
 
-	public List<InputSplit> split(Configuration conf, ResultSet results, String colName, HiveDWDataSet hiveDWDataSet, HiveODSDataSet hiveODSDataSet) throws SQLException {
+	public List<InputSplit> split(Configuration conf, ResultSet results, String colName, Map<String, HiveDataSet> hiveDataSetMap) throws SQLException {
 
 		String db = conf.get(Constants.SPLITTERDB);
 		String table = conf.get(Constants.SPLITTERTABLE);
@@ -42,7 +41,7 @@ public class FloatSplitter implements DBSplitter {
 
 		if (results.getString(1) == null && results.getString(2) == null) {
 			// Range is null to null. Return a null split accordingly.
-			splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+			splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDataSetMap));
 			return splits;
 		}
 
@@ -65,7 +64,7 @@ public class FloatSplitter implements DBSplitter {
 		double curUpper = curLower + splitSize;
 
 		while (curUpper < maxVal) {
-			splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(lowClausePrefix + Double.toString(curLower), highClausePrefix + Double.toString(curUpper), db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+			splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(lowClausePrefix + Double.toString(curLower), highClausePrefix + Double.toString(curUpper), db, table, conditions, fields, hiveDataSetMap));
 
 			curLower = curUpper;
 			curUpper += splitSize;
@@ -73,12 +72,12 @@ public class FloatSplitter implements DBSplitter {
 
 		// Catch any overage and create the closed interval for the last split.
 		if (curLower <= maxVal || splits.size() == 1) {
-			splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(lowClausePrefix + Double.toString(curLower), colName + " <= " + Double.toString(maxVal), db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+			splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(lowClausePrefix + Double.toString(curLower), colName + " <= " + Double.toString(maxVal), db, table, conditions, fields, hiveDataSetMap));
 		}
 
 		if (results.getString(1) == null || results.getString(2) == null) {
 			// At least one extrema is null; add a null split.
-			splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+			splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDataSetMap));
 		}
 
 		return splits;

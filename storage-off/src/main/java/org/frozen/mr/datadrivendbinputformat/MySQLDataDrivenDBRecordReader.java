@@ -15,7 +15,7 @@ import org.apache.hadoop.mapreduce.lib.db.DBWritable;
 @InterfaceStability.Evolving
 public class MySQLDataDrivenDBRecordReader<T extends DBWritable> extends DataDrivenDBRecordReader<T> {
 
-	public MySQLDataDrivenDBRecordReader(CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit split, Class<T> inputClass, Configuration conf, Connection conn, DBConfiguration dbConfig, String cond, String[] fields, String table) throws SQLException {
+	public MySQLDataDrivenDBRecordReader(DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop split, Class<T> inputClass, Configuration conf, Connection conn, DBConfiguration dbConfig, String cond, String[] fields, String table) throws SQLException {
 		super(split, inputClass, conf, conn, dbConfig, cond, fields, table, "MYSQL");
 	}
 

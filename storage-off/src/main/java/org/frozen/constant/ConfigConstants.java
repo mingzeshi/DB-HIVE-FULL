@@ -13,6 +13,10 @@ public interface ConfigConstants {
 	String IMPORT_DB_PASSWORD = "import.db.password";
 	
 	String LOAD_HIVE_CONFIG = "load.hive.config";
+	
+	String IMPORT_DB_CONNECTION_OPEN = "import.db.connection.open";
+	String IS_CONDITIONS_FULL_DOSE_DAY = "is.conditions.full.dose.day";
+	String CONDITIONS_FULL_DOSE_DAY = "conditions.full.dose.day";
 
 	
 	// redis中存储：hive元数据相关key

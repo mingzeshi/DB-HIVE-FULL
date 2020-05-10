@@ -15,7 +15,6 @@ import org.frozen.bean.importDBBean.ImportRDB_XMLDataSetDB;
 import org.frozen.bean.loadHiveBean.HiveDataBase;
 import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.bean.loadHiveBean.HiveMetastore;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveDWBean.HiveDWDataSet;
 
 public class XmlUtil {
 

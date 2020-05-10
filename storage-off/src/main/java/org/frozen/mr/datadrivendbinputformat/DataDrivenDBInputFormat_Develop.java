@@ -12,6 +12,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -29,51 +30,54 @@ import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.lib.db.DBConfiguration;
 import org.apache.hadoop.mapreduce.lib.db.DBInputFormat;
 import org.apache.hadoop.mapreduce.lib.db.DBWritable;
-
 import org.frozen.bean.importDBBean.ImportRDB_XMLDataSet;
 import org.frozen.bean.importDBBean.ImportRDB_XMLDataSetDB;
+import org.frozen.bean.loadHiveBean.HiveDataBase;
+import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.bean.loadHiveBean.HiveMetastore;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveDWBean.HiveDWDataSet;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveODSBean.HiveODSDataSet;
+import org.frozen.constant.ConfigConstants;
 import org.frozen.constant.Constants;
+import org.frozen.exception.BuildDriverException;
+import org.frozen.util.JedisOperation;
 import org.frozen.util.XmlUtil;
 
 import net.sf.json.JSONObject;
 
-public class CustomDataDrivenDBInputFormat<T extends DBWritable> extends DBInputFormat<T> implements Configurable {
+public class DataDrivenDBInputFormat_Develop<T extends DBWritable> extends DBInputFormat<T> implements Configurable {
 
-	private static final Log LOG = LogFactory.getLog(CustomDataDrivenDBInputFormat.class);
+	private static final Log LOG = LogFactory.getLog(DataDrivenDBInputFormat_Develop.class);
 	public static final String SUBSTITUTE_TOKEN = "$CONDITIONS";
 
-	public static class DataDrivenDBInputSplit extends DBInputFormat.DBInputSplit {
+	public static class DataDrivenDBInputSplit_Develop extends DBInputFormat.DBInputSplit {
 
-		private String lowerBoundClause;
-		private String upperBoundClause;
-		private String db;
-		private String table;
-		private String conditions;
-		private String fields;
-		private HiveDWDataSet hiveDWDataSet;
-		private HiveODSDataSet hiveODSDataSet;
+		private String lowerBoundClause; // 下边界
+		private String upperBoundClause; // 上边界
+		private String db; // 数据表切片的DB库名
+		private String table; // 数据表切片的表名
+		private String conditions; // 数据表切片的where条件
+		private String fields; // 数据表切片的列名
+		private Map<String, HiveDataSet> hiveDataSetMap; // 数据表切片数据表与Hive表映射关系
 
-		public DataDrivenDBInputSplit() {
+		public DataDrivenDBInputSplit_Develop() {
 		}
 
-		public DataDrivenDBInputSplit(final String lower, final String upper, String db, String table, String conditions, String fields, HiveDWDataSet hiveDWDataSet, HiveODSDataSet hiveODSDataSet) {
+		public DataDrivenDBInputSplit_Develop(final String lower, final String upper, String db, String table, String conditions, String fields, Map<String, HiveDataSet> hiveDataSetMap) {
 			this.lowerBoundClause = lower;
 			this.upperBoundClause = upper;
 			this.db = db;
 			this.table = table;
 			this.conditions = conditions;
 			this.fields = fields;
-			this.hiveDWDataSet = hiveDWDataSet;
-		    this.hiveODSDataSet = hiveODSDataSet;
+			this.hiveDataSetMap = hiveDataSetMap;
 		}
 
 		public long getLength() throws IOException {
 			return 0; // unfortunately, we don't know this.
 		}
 
+		/**
+		 * 输入反序列化
+		 */
 		public void readFields(DataInput input) throws IOException {
 			this.lowerBoundClause = Text.readString(input);
 			this.upperBoundClause = Text.readString(input);
@@ -82,10 +86,25 @@ public class CustomDataDrivenDBInputFormat<T extends DBWritable> extends DBInput
 			this.conditions = Text.readString(input);
 			this.fields = Text.readString(input);
 
-			this.hiveDWDataSet = (HiveDWDataSet) JSONObject.toBean(JSONObject.fromObject(Text.readString(input).toString()), HiveDWDataSet.class);
-		    this.hiveODSDataSet = (HiveODSDataSet) JSONObject.toBean(JSONObject.fromObject(Text.readString(input).toString()), HiveODSDataSet.class);
+			/**
+			 * 反序列化 Map<String, HiveDataSet> 数据格式
+			 */
+			JSONObject jsonObject = JSONObject.fromObject(Text.readString(input).toString());
+			Iterator<String> jsonKeys = jsonObject.keys();
+			Map<String, HiveDataSet> hiveDataSetMap_ = new HashMap<String, HiveDataSet>();
+			while(jsonKeys.hasNext()) {
+				String jK = jsonKeys.next();
+				hiveDataSetMap_.put(
+						jK,
+						(HiveDataSet) JSONObject.toBean(JSONObject.fromObject(jsonObject.get(jK)), HiveDataSet.class));
+			}
+			
+			this.hiveDataSetMap = hiveDataSetMap_;
 		}
 
+		/**
+		 * 输出序列化
+		 */
 		public void write(DataOutput output) throws IOException {
 			Text.writeString(output, this.lowerBoundClause);
 			Text.writeString(output, this.upperBoundClause);
@@ -94,10 +113,12 @@ public class CustomDataDrivenDBInputFormat<T extends DBWritable> extends DBInput
 			Text.writeString(output, this.conditions);
 			Text.writeString(output, this.fields);
 
-			Text.writeString(output, JSONObject.fromObject(hiveDWDataSet).toString());
-		    Text.writeString(output, JSONObject.fromObject(hiveODSDataSet).toString());
+			Text.writeString(output, JSONObject.fromObject(hiveDataSetMap).toString());
 		}
 
+		/**
+		 * getter、setter
+		 */
 		public String getLowerClause() {
 			return lowerBoundClause;
 		}
@@ -122,24 +143,19 @@ public class CustomDataDrivenDBInputFormat<T extends DBWritable> extends DBInput
 			return fields;
 		}
 		
-		public HiveDWDataSet getHiveDWDataSet() {
-			return hiveDWDataSet;
+		public Map<String, HiveDataSet> getHiveDataSetMap() {
+			return hiveDataSetMap;
 		}
 
-		public void setHiveDWDataSet(HiveDWDataSet hiveDWDataSet) {
-			this.hiveDWDataSet = hiveDWDataSet;
-		}
-
-		public HiveODSDataSet getHiveODSDataSet() {
-			return hiveODSDataSet;
-		}
-
-		public void setHiveODSDataSet(HiveODSDataSet hiveODSDataSet) {
-			this.hiveODSDataSet = hiveODSDataSet;
+		public void setHiveDataSetMap(Map<String, HiveDataSet> hiveDataSetMap) {
+			this.hiveDataSetMap = hiveDataSetMap;
 		}
 	}
 
-	protected DBSplitter getSplitter(int sqlDataType) {
+	/**
+	 * 根据字段类型匹配切片类型
+	 */
+	protected DBSplitter_Develop getSplitter(int sqlDataType) {
 		switch (sqlDataType) {
 		case Types.NUMERIC:
 		case Types.DECIMAL:
@@ -191,27 +207,41 @@ public class CustomDataDrivenDBInputFormat<T extends DBWritable> extends DBInput
 
 		// -----------------------------------------------
 		
-		HiveMetastore hiveDWMetastore = XmlUtil.parserHdfsLoadToHiveDWXML(configuration.get("hdfs.load.hive.dw.path"), null); // 获取近源数据快照层配置文件相关信息
-		HiveMetastore hiveODSMetastore = XmlUtil.parserHdfsLoadToHiveODSXML(configuration.get("hdfs.load.hive.ods.path"), null); // 获取近源数据应用层配置文件相关信息
+		String tConfig = configuration.get(ConfigConstants.LOAD_HIVE_CONFIG); // 数据输出配置项
 		
-		/**
-		 * 拿到快照层配置项
-		 */
-		List<HiveDWDataSet> hiveDWDataSetList = hiveDWMetastore.getHiveDataBaseList().get(0).getHiveDataSetList();
-		Map<String, HiveDWDataSet> hiveDWTabMap = new HashMap<String, HiveDWDataSet>();
-		for(HiveDWDataSet dwDataSet : hiveDWDataSetList) {
-			hiveDWTabMap.put(dwDataSet.getEnnameM().toLowerCase(), dwDataSet);
+		String[] tConfigs = tConfig.split(Constants.COMMA);
+		
+		if(tConfigs.length <= 0) // 无数据输出配置项
+			throw BuildDriverException.NO_EXPORT_CONFIG;
+		
+//		List<HiveMetastore> hiveTabMetaStoreList = new ArrayList<HiveMetastore>(); // 非分区表Metastore信息
+//		List<HiveMetastore> hivePartTabMetaStoreList = new ArrayList<HiveMetastore>(); // 分区表Metastore信息
+		
+		Map<String, Map<String, HiveDataSet>> hvieExportConfigMap = new HashMap<String, Map<String, HiveDataSet>>(); // 数据据输出所有的目录
+		
+		for(String cfg : tConfigs) { // 循环每个输出-配置文件
+			
+			String location_hive_config = configuration.get(cfg + Constants.LOCATION_HIVE);
+			
+			if(StringUtils.isBlank(location_hive_config))
+				throw BuildDriverException.NO_HIVE_TAB_CONFIG;
+
+			/**
+			 *  加载输出到Hive表-XML配置文件
+			 */
+			List<HiveDataSet> hiveDataSetList = XmlUtil.parserLoadToHiveXML(location_hive_config, null)
+				.getHiveDataBaseList().get(0)
+				.getHiveDataSetList();
+			
+			Map<String, HiveDataSet> hiveTabMap = new HashMap<String, HiveDataSet>(); // 数据库表与Hive表的映射
+			
+			for(HiveDataSet hiveDataSet : hiveDataSetList) {
+				hiveTabMap.put(hiveDataSet.getEnnameM().toLowerCase(), hiveDataSet);
+			}
+			
+			hvieExportConfigMap.put(cfg, hiveTabMap);
 		}
 
-		/**
-		 * 拿到应用层配置项
-		 */
-		List<HiveODSDataSet> hiveODSdataSetList = hiveODSMetastore.getHiveDataBaseList().get(0).getHiveDataSetList();
-		Map<String, HiveODSDataSet> hiveODSTabMap = new HashMap<String, HiveODSDataSet>();
-		for(HiveODSDataSet odsDataSet : hiveODSdataSetList) {
-			hiveODSTabMap.put(odsDataSet.getEnnameM().toLowerCase(), odsDataSet);
-		}
-		
 		// -----------------------------------------------
 
 		ResultSet results = null;
@@ -222,20 +252,18 @@ public class CustomDataDrivenDBInputFormat<T extends DBWritable> extends DBInput
 		
 		try {
 
-			ImportRDB_XMLDataSetDB dataSetDB = XmlUtil.parserXml(configuration.get("import.db.config.path"), null); // 获取配置文件需要导入的所有表
-			String db = dataSetDB.getEnname();
-			List<ImportRDB_XMLDataSet> dataSetList = dataSetDB.getImportRDB_XMLDataSet();
-
-//			Long batchCount = configuration.getLong("map.task.batch.count", 3000000); // maptask处理数据量
+			ImportRDB_XMLDataSetDB dataSetDB = XmlUtil.parserXml(configuration.get(ConfigConstants.IMPORT_DB_CONFIG_PATH), null); // 获取配置文件需要导入的所有表
+			String db = dataSetDB.getEnname(); // 导入数据所在库
+			List<ImportRDB_XMLDataSet> dataSetList = dataSetDB.getImportRDB_XMLDataSet(); // 导入数据所有表信息
 
 			statement = connection.createStatement();
 
-			List<InputSplit> splits = new ArrayList<InputSplit>();
+			List<InputSplit> splits = new ArrayList<InputSplit>(); // split集合
 			
-			boolean isOpenConnection = configuration.getBoolean("import.db.connection.open", true); // 是否启用查询条件
+			boolean isOpenConnection = configuration.getBoolean(ConfigConstants.IMPORT_DB_CONNECTION_OPEN, true); // 是否启用查询条件
 
-			boolean isFullDoseDay = configuration.getBoolean("is.conditions.full.dose.day", true); // 是否启用每月某日拉取全量数据
-			String fullDoseDay = configuration.get("conditions.full.dose.day", "07"); // 每月某日拉取全量数据
+			boolean isFullDoseDay = configuration.getBoolean(ConfigConstants.IS_CONDITIONS_FULL_DOSE_DAY, true); // 是否启用每月某日拉取全量数据
+			String fullDoseDay = configuration.get(ConfigConstants.CONDITIONS_FULL_DOSE_DAY, "07"); // 每月某日拉取全量数据
 
 			// 构建整库全表split切片
 			for (ImportRDB_XMLDataSet dataSet : dataSetList) { // 循环每张表
@@ -252,16 +280,15 @@ public class CustomDataDrivenDBInputFormat<T extends DBWritable> extends DBInput
 				}
 				
 				String fields = dataSet.getFields(); // 数据切片查询字段，默认 *
-				
-				HiveDWDataSet hiveDWDataSet = null;
-				HiveODSDataSet hiveODSDataSet = null;				
-				
+							
 				String tableName_low = tableName.toLowerCase();
-				if(hiveDWTabMap.containsKey(tableName_low)) {
-					hiveDWDataSet = hiveDWTabMap.get(tableName_low);
-				}
-				if(hiveODSTabMap.containsKey(tableName_low)) {
-					hiveODSDataSet = hiveODSTabMap.get(tableName_low);
+				
+				Map<String, HiveDataSet> hiveDataSetMap = new HashMap<String, HiveDataSet>();
+				
+				for(String cfg : tConfigs) {
+					if(hvieExportConfigMap.get(cfg).containsKey(tableName_low)) {
+						hiveDataSetMap.put(cfg, hvieExportConfigMap.get(cfg).get(tableName_low));
+					}
 				}
 				
 				// ----------------------------------------------
@@ -283,7 +310,7 @@ public class CustomDataDrivenDBInputFormat<T extends DBWritable> extends DBInput
 				results.next();
 
 				int sqlDataType = results.getMetaData().getColumnType(1);
-				DBSplitter splitter = getSplitter(sqlDataType);
+				DBSplitter_Develop splitter = getSplitter(sqlDataType);
 				if (null == splitter) {
 					throw new IOException("Unknown SQL data type: " + sqlDataType);
 				}
@@ -293,7 +320,7 @@ public class CustomDataDrivenDBInputFormat<T extends DBWritable> extends DBInput
 				configuration.set(Constants.SPLITTERCONDITIONS, conditions); // 数据切片查询条件
 				configuration.set(Constants.SPLITTERFIELDS, fields); // 数据切片查询字段，默认 *
 
-				splits.addAll(splitter.split(configuration, results, splitCol, hiveDWDataSet, hiveODSDataSet));
+				splits.addAll(splitter.split(configuration, results, splitCol, hiveDataSetMap));
 			}
 
 			return splits;
@@ -374,7 +401,7 @@ public class CustomDataDrivenDBInputFormat<T extends DBWritable> extends DBInput
 
 		LOG.debug("Creating db record reader for db product: " + dbProductName);
 
-		DataDrivenDBInputSplit dataDrivenDBInputSplit = (DataDrivenDBInputSplit) split;
+		DataDrivenDBInputSplit_Develop dataDrivenDBInputSplit = (DataDrivenDBInputSplit_Develop) split;
 
 		try {
 			if (dbProductName.startsWith("MYSQL") || dbProductName.startsWith("POSTGRESQL")) {
@@ -388,7 +415,7 @@ public class CustomDataDrivenDBInputFormat<T extends DBWritable> extends DBInput
 
 	public static void setInput(Job job, Class<? extends DBWritable> inputClass) {
 //		DBInputFormat.setInput(job, inputClass, tableName, conditions, splitBy, fieldNames);
-		job.setInputFormatClass(CustomDataDrivenDBInputFormat.class);
+		job.setInputFormatClass(DataDrivenDBInputFormat_Develop.class);
 	    DBConfiguration dbConf = new DBConfiguration(job.getConfiguration());
 //	    dbConf.setInputFieldNames(fieldNames);
 		dbConf.setInputClass(inputClass);

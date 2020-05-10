@@ -22,21 +22,15 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.frozen.asynch.LoadLocationConfiguration;
 import org.frozen.bean.importDBBean.ImportDataBean;
-import org.frozen.bean.importDBBean.ImportRDB_XMLDataSetDB;
-import org.frozen.bean.loadHiveBean.HiveDataBase;
-import org.frozen.bean.loadHiveBean.HiveMetastore;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveDWBean.HiveDWDataSet;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveODSBean.HiveODSDataSet;
 import org.frozen.constant.ConfigConstants;
 import org.frozen.constant.Constants;
-import org.frozen.mr.datadrivendbinputformat.CustomDataDrivenDBInputFormat;
-import org.frozen.mr.datadrivendbinputformat.CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit;
+import org.frozen.mr.datadrivendbinputformat.DataDrivenDBInputFormat_Develop;
+import org.frozen.mr.datadrivendbinputformat.DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop;
 import org.frozen.mr.datadrivendbinputformat.DeleteExistsTextOutputFormat;
 import org.frozen.util.DateUtils;
 import org.frozen.util.HadoopTool;
 import org.frozen.util.HadoopUtil;
 import org.frozen.util.JedisOperation;
-import org.frozen.util.XmlUtil;
 
 import net.sf.json.JSONArray;
 
@@ -49,14 +43,14 @@ public class ImportDBToHive extends HadoopTool {
 	@Override
 	public int run(String[] args) throws Exception {
 		
-		
-		
 		Configuration configuration = getConf(); // 创建配置信息
 		
-		// 加载XML文件、redis将hive的DB、Location信息存储到Configuration中
-		new Thread(new LoadLocationConfiguration(configuration)).start();
+		Thread llcT = new Thread(new LoadLocationConfiguration(configuration)); // 加载XML文件、redis将hive的DB、Location信息存储到Configuration中
+		llcT.start();
 		
 		FileSystem fileSystem = FileSystem.get(configuration); // 创建文件系统
+		
+		llcT.join(); // 等待加载配置文件完毕
 
 		DBConfiguration.configureDB(configuration, 
 				configuration.get(ConfigConstants.IMPORT_DB_DRIVER), 
@@ -70,8 +64,11 @@ public class ImportDBToHive extends HadoopTool {
 	
 		job.setMapperClass(ImportDBToHiveMapper.class);
 
-		job.setInputFormatClass(CustomDataDrivenDBInputFormat.class);
-		CustomDataDrivenDBInputFormat.setInput(job, ImportDataBean.class);
+		/**
+		 * 设置数据抽取组件-基于 org.apache.hadoop.mapreduce.lib.db.DataDrivenDBInputFormat<T> 二次开发
+		 */
+		job.setInputFormatClass(DataDrivenDBInputFormat_Develop.class);
+		DataDrivenDBInputFormat_Develop.setInput(job, ImportDataBean.class);
 
 		job.setOutputFormatClass(DeleteExistsTextOutputFormat.class);
 
@@ -108,7 +105,7 @@ public class ImportDBToHive extends HadoopTool {
 		private Text outputValue = new Text();
 
 		private MultipleOutputs<NullWritable, Text> multipleOutputs;
-		DataDrivenDBInputSplit dbSplit;
+		DataDrivenDBInputSplit_Develop dbSplit;
 		String outputPath;
 		String importDB;
 		String importTable;
@@ -130,7 +127,7 @@ public class ImportDBToHive extends HadoopTool {
 			Configuration configuration = context.getConfiguration();
 
 			multipleOutputs = new MultipleOutputs<NullWritable, Text>(context);
-			dbSplit = (DataDrivenDBInputSplit) context.getInputSplit();
+			dbSplit = (DataDrivenDBInputSplit_Develop) context.getInputSplit();
 
 			importDB = dbSplit.getDb();
 			importTable = dbSplit.getTable();
@@ -147,7 +144,7 @@ public class ImportDBToHive extends HadoopTool {
 			
 			String part_log_day = configuration.get("custom.dw.logday", DateUtils.getYesterdayDate()); // 默认前一天 yyyy-MM-dd			
 			
-			DataDrivenDBInputSplit dataDrivenDBInputSplit = (DataDrivenDBInputSplit) context.getInputSplit();
+			DataDrivenDBInputSplit_Develop dataDrivenDBInputSplit = (DataDrivenDBInputSplit_Develop) context.getInputSplit();
 			
 			/**
 			 * 组装向hive快照层表load数据信息

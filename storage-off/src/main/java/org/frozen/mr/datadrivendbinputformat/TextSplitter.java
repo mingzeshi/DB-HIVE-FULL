@@ -1,13 +1,13 @@
 package org.frozen.mr.datadrivendbinputformat;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -15,11 +15,8 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.lib.db.DBConfiguration;
-
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveDWBean.HiveDWDataSet;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveODSBean.HiveODSDataSet;
+import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.constant.Constants;
 
 @InterfaceAudience.Public
@@ -28,7 +25,7 @@ public class TextSplitter extends BigDecimalSplitter {
 
 	private static final Log LOG = LogFactory.getLog(TextSplitter.class);
 
-	public List<InputSplit> split(Configuration conf, ResultSet results, String colName, HiveDWDataSet hiveDWDataSet, HiveODSDataSet hiveODSDataSet) throws SQLException {
+	public List<InputSplit> split(Configuration conf, ResultSet results, String colName, Map<String, HiveDataSet> hiveDataSetMap) throws SQLException {
 		
 		String db = conf.get(Constants.SPLITTERDB);
 		String table = conf.get(Constants.SPLITTERTABLE);
@@ -49,7 +46,7 @@ public class TextSplitter extends BigDecimalSplitter {
 //		numSplits = getNumberSplit(conf, table, batchCount); // 拿到切片数量
 
 		if (1 == numSplits) { // 如果只有一个split
-			splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit("1=1", "1=1", db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+			splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop("1=1", "1=1", db, table, conditions, fields, hiveDataSetMap));
 			return splits;
 	    }
 
@@ -64,7 +61,7 @@ public class TextSplitter extends BigDecimalSplitter {
 		}
 
 		if (null == maxString) {
-			splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+			splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDataSetMap));
 			return splits;
 		}
 
@@ -94,14 +91,14 @@ public class TextSplitter extends BigDecimalSplitter {
 			String end = splitStrings.get(i);
 
 			if (i == splitStrings.size() - 1) {
-				splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(lowClausePrefix + start + "'", colName + " <= '" + end + "'", db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+				splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(lowClausePrefix + start + "'", colName + " <= '" + end + "'", db, table, conditions, fields, hiveDataSetMap));
 			} else {
-				splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(lowClausePrefix + start + "'", highClausePrefix + end + "'", db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+				splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(lowClausePrefix + start + "'", highClausePrefix + end + "'", db, table, conditions, fields, hiveDataSetMap));
 			}
 		}
 
 		if (minIsNull) {
-			splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+			splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDataSetMap));
 		}
 
 		return splits;

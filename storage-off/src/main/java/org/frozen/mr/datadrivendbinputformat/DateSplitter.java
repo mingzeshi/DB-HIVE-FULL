@@ -5,12 +5,11 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Time;
-import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -18,11 +17,8 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.lib.db.DBConfiguration;
-
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveDWBean.HiveDWDataSet;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveODSBean.HiveODSDataSet;
+import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.constant.Constants;
 
 @InterfaceAudience.Public
@@ -31,7 +27,7 @@ public class DateSplitter extends IntegerSplitter {
 
 	private static final Log LOG = LogFactory.getLog(DateSplitter.class);
 
-	public List<InputSplit> split(Configuration conf, ResultSet results, String colName, HiveDWDataSet hiveDWDataSet, HiveODSDataSet hiveODSDataSet) throws SQLException {
+	public List<InputSplit> split(Configuration conf, ResultSet results, String colName, Map<String, HiveDataSet> hiveDataSetMap) throws SQLException {
 		String db = conf.get(Constants.SPLITTERDB);
 		String table = conf.get(Constants.SPLITTERTABLE);
 		String fields = conf.get(Constants.SPLITTERFIELDS);
@@ -57,7 +53,7 @@ public class DateSplitter extends IntegerSplitter {
 			// The range of acceptable dates is NULL to NULL. Just create a
 			// single split.
 			List<InputSplit> splits = new ArrayList<InputSplit>();
-			splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+			splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDataSetMap));
 			return splits;
 		}
 
@@ -95,10 +91,10 @@ public class DateSplitter extends IntegerSplitter {
 					}
 				}
 				// This is the last one; use a closed interval.
-				splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(lowClausePrefix + dateToString(startDate), colName + " <= " + dateToString(endDate), db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+				splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(lowClausePrefix + dateToString(startDate), colName + " <= " + dateToString(endDate), db, table, conditions, fields, hiveDataSetMap));
 			} else {
 				// Normal open-interval case.
-				splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(lowClausePrefix + dateToString(startDate), highClausePrefix + dateToString(endDate), db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+				splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(lowClausePrefix + dateToString(startDate), highClausePrefix + dateToString(endDate), db, table, conditions, fields, hiveDataSetMap));
 			}
 
 			start = end;
@@ -107,7 +103,7 @@ public class DateSplitter extends IntegerSplitter {
 
 		if (minVal == Long.MIN_VALUE || maxVal == Long.MIN_VALUE) {
 			// Add an extra split to handle the null case that we saw.
-			splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+			splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDataSetMap));
 		}
 
 		return splits;

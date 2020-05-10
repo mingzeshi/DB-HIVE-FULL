@@ -4,20 +4,19 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputSplit;
-
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveDWBean.HiveDWDataSet;
-import org.frozen.bean.loadHiveBean.hdfsLoadHiveODSBean.HiveODSDataSet;
+import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.constant.Constants;
 
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class IntegerSplitter implements DBSplitter {
-	public List<InputSplit> split(Configuration conf, ResultSet results, String colName, HiveDWDataSet hiveDWDataSet, HiveODSDataSet hiveODSDataSet) throws SQLException {
+public class IntegerSplitter implements DBSplitter_Develop {
+	public List<InputSplit> split(Configuration conf, ResultSet results, String colName, Map<String, HiveDataSet> hiveDataSetMap) throws SQLException {
 		String db = conf.get(Constants.SPLITTERDB);
 		String table = conf.get(Constants.SPLITTERTABLE);
 		String conditions = conf.get(Constants.SPLITTERCONDITIONS);
@@ -38,7 +37,7 @@ public class IntegerSplitter implements DBSplitter {
 		if (results.getString(1) == null && results.getString(2) == null) {
 			// Range is null to null. Return a null split accordingly.
 			List<InputSplit> splits = new ArrayList<InputSplit>();
-			splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+			splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDataSetMap));
 			return splits;
 		}
 		// Get all the split points together.
@@ -52,10 +51,10 @@ public class IntegerSplitter implements DBSplitter {
 
 			if (i == splitPoints.size() - 1) {
 				// This is the last one; use a closed interval.
-				splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(lowClausePrefix + Long.toString(start), colName + " <= " + Long.toString(end), db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+				splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(lowClausePrefix + Long.toString(start), colName + " <= " + Long.toString(end), db, table, conditions, fields, hiveDataSetMap));
 			} else {
 				// Normal open-interval case.
-				splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(lowClausePrefix + Long.toString(start), highClausePrefix + Long.toString(end), db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+				splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(lowClausePrefix + Long.toString(start), highClausePrefix + Long.toString(end), db, table, conditions, fields, hiveDataSetMap));
 			}
 
 			start = end;
@@ -63,7 +62,7 @@ public class IntegerSplitter implements DBSplitter {
 
 		if (results.getString(1) == null || results.getString(2) == null) {
 			// At least one extrema is null; add a null split.
-			splits.add(new CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDWDataSet, hiveODSDataSet));
+			splits.add(new DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop(colName + " IS NULL", colName + " IS NULL", db, table, conditions, fields, hiveDataSetMap));
 		}
 
 		return splits;

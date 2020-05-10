@@ -10,17 +10,17 @@ public class HiveDataSet {
 	protected String ennameH; // hive-英文名称
 	protected String chname; // 中文名称
 	protected String description; // 描述信息
-	private List<HiveField> hiveODSFieldList; // hive应用层需要映射的字段
+	private List<HiveField> hiveFieldList; // Hive表需要映射的字段
 
 	public HiveDataSet() {
 	}
 
-	public HiveDataSet(String ennameM, String ennameH, String chname, String description, List<HiveField> hiveODSFieldList) {
+	public HiveDataSet(String ennameM, String ennameH, String chname, String description, List<HiveField> hiveFieldList) {
 		this.ennameM = ennameM;
 		this.ennameH = ennameH;
 		this.chname = chname;
 		this.description = description;
-		this.hiveODSFieldList = hiveODSFieldList;
+		this.hiveFieldList = hiveFieldList;
 	}
 
 	public String getEnnameM() {
@@ -55,11 +55,11 @@ public class HiveDataSet {
 		this.description = description;
 	}
 
-	public List<HiveField> getHiveODSFieldList() {
-		return hiveODSFieldList;
+	public List<HiveField> getHiveFieldList() {
+		return hiveFieldList;
 	}
 
-	public void setHiveODSFieldList(List<HiveField> hiveODSFieldList) {
-		this.hiveODSFieldList = hiveODSFieldList;
+	public void setHiveODSFieldList(List<HiveField> hiveFieldList) {
+		this.hiveFieldList = hiveFieldList;
 	}
 }

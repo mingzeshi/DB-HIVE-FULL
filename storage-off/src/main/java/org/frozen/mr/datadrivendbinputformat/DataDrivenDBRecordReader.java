@@ -37,7 +37,7 @@ public class DataDrivenDBRecordReader<T extends DBWritable> extends RecordReader
 	private ResultSet results = null;
 	private Class<T> inputClass;
 	private Configuration conf;
-	private CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit split;
+	private DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop split;
 	private long pos = 0;
 	private LongWritable key = null;
 	private T value = null;
@@ -48,7 +48,7 @@ public class DataDrivenDBRecordReader<T extends DBWritable> extends RecordReader
 	private String[] fieldNames;
 	private String tableName;
 
-	public DataDrivenDBRecordReader(CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit split, Class<T> inputClass, Configuration conf, Connection conn, DBConfiguration dbConfig, String cond, String[] fields, String table, String dbProductName) throws SQLException {
+	public DataDrivenDBRecordReader(DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop split, Class<T> inputClass, Configuration conf, Connection conn, DBConfiguration dbConfig, String cond, String[] fields, String table, String dbProductName) throws SQLException {
 		this.inputClass = inputClass;
 		this.split = split;
 		this.conf = conf;
@@ -68,7 +68,7 @@ public class DataDrivenDBRecordReader<T extends DBWritable> extends RecordReader
 	protected String getSelectQuery() {
 		StringBuilder query = new StringBuilder();
 		// DataDrivenDBInputFormat.DataDrivenDBInputSplit dataSplit = (DataDrivenDBInputFormat.DataDrivenDBInputSplit) getSplit();
-		CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit dataSplit = (CustomDataDrivenDBInputFormat.DataDrivenDBInputSplit) getSplit();
+		DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop dataSplit = (DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop) getSplit();
 		DBConfiguration dbConf = getDBConf();
 		String[] fieldNames = getFieldNames();
 		String tableName = getTableName();
@@ -103,11 +103,11 @@ public class DataDrivenDBRecordReader<T extends DBWritable> extends RecordReader
 
 		} else {
 			String inputQuery = dbConf.getInputQuery();
-			if (inputQuery.indexOf(CustomDataDrivenDBInputFormat.SUBSTITUTE_TOKEN) == -1) {
-				LOG.error("Could not find the clause substitution token " + CustomDataDrivenDBInputFormat.SUBSTITUTE_TOKEN + " in the query: [" + inputQuery + "]. Parallel splits may not work correctly.");
+			if (inputQuery.indexOf(DataDrivenDBInputFormat_Develop.SUBSTITUTE_TOKEN) == -1) {
+				LOG.error("Could not find the clause substitution token " + DataDrivenDBInputFormat_Develop.SUBSTITUTE_TOKEN + " in the query: [" + inputQuery + "]. Parallel splits may not work correctly.");
 			}
 
-			query.append(inputQuery.replace(CustomDataDrivenDBInputFormat.SUBSTITUTE_TOKEN, conditionClauses.toString()));
+			query.append(inputQuery.replace(DataDrivenDBInputFormat_Develop.SUBSTITUTE_TOKEN, conditionClauses.toString()));
 		}
 
 		LOG.debug("Using query: " + query.toString());
@@ -215,7 +215,7 @@ public class DataDrivenDBRecordReader<T extends DBWritable> extends RecordReader
 	}
 
 	
-	protected CustomDataDrivenDBInputFormat.DBInputSplit getSplit() {
+	protected DataDrivenDBInputFormat_Develop.DBInputSplit getSplit() {
 		return split;
 	}
 
