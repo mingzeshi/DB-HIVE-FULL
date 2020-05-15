@@ -22,8 +22,10 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.frozen.asynch.LoadLocationConfiguration;
 import org.frozen.bean.importDBBean.ImportDataBean;
+import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.constant.ConfigConstants;
 import org.frozen.constant.Constants;
+import org.frozen.exception.TaskRunningException;
 import org.frozen.mr.datadrivendbinputformat.DataDrivenDBInputFormat_Develop;
 import org.frozen.mr.datadrivendbinputformat.DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop;
 import org.frozen.mr.datadrivendbinputformat.DeleteExistsTextOutputFormat;
@@ -112,76 +114,99 @@ public class ImportDBToHive extends HadoopTool {
 		String outputformatDir;
 
 		// ----------------------------------------------
+		
+		Map<String, HiveDataSet> hiveDataSetMap; // 每个数据切片的数据输出点(1~N)
 
-		List<String> dwfieldList = new ArrayList<String>();
-		List<String> odsfieldList = new ArrayList<String>();
-
-		String dwoutputPath; // 快照层输出路径
-		String odsoutputPath; // 应用层输出路径
-
-		HiveDWDataSet hiveDWDataSet; // 当前数据切片导入hive快照层配置项
-		HiveODSDataSet hiveODSDataSet; // 当前数据切片导入hive应用层配置项
+		Map<String, String> outputLocation = new HashMap<String, String>(); // 数据输出的所有路径
+		
+		Map<String, List<String>> hiveTabFileds = new HashMap<String, List<String>>(); // Hive表字段与数据库表字段的对应关系(数据库表字段集合)
 
 		@Override
 		protected void setup(Context context) throws IOException, InterruptedException {
 			Configuration configuration = context.getConfiguration();
 
-			multipleOutputs = new MultipleOutputs<NullWritable, Text>(context);
+			multipleOutputs = new MultipleOutputs<NullWritable, Text>(context); // 多文件路径数据输出组件
 			dbSplit = (DataDrivenDBInputSplit_Develop) context.getInputSplit();
 
 			importDB = dbSplit.getDb();
 			importTable = dbSplit.getTable();
+			hiveDataSetMap = dbSplit.getHiveDataSetMap();
 
 			outputPath = importTable + "/" + importTable;
 			
-			// ------------------------------
-		
-			String dwhiveDB = configuration.get(Constants.HIVE_DB_DW);
-			String odshiveDB = configuration.get(Constants.HIVE_DB_ODS);
+			// -----------------------------------------------------
+			
+			for(String cfg : hiveDataSetMap.keySet()) {
+				StringBuffer exportLocation = new StringBuffer();
+				
+				/**
+				 * 组装数据输出到Hive或HDFS的一系列信息
+				 * 	Hive-DB
+				 * 	Hive或HFS路径
+				 *  如果有分区表的分区字段、分区字段是否是时间、时间格式等
+				 */
+				
+				/**
+				 * 数据输出的Location
+				 */
+				String hiveLocation = configuration.get(cfg + ConfigConstants.HIVE_LOCATION); // Hive-DB-Location
+				if(StringUtils.isNotBlank(configuration.get(cfg + ConfigConstants.LOCATION_HDFS))) { // 如果数据输出的路径是HDFS
+					hiveLocation = configuration.get(cfg + ConfigConstants.LOCATION_HDFS);
+				}
+				exportLocation.append(hiveLocation + Constants.PATH); // 拼接数据输出-Location
+				
+				/**
+				 * 收集数据输出到的Hive-DB
+				 */
+				String hiveDB = configuration.get(cfg + ConfigConstants.HIVE_DB); // Hive-DB
 
-			String dw_db_location = configuration.get("custom.dw.export", configuration.get(Constants.HIVE_DW_LOCATION_CONF));	// 快照层location
-			String ods_db_location = configuration.get("custom.ods.export", configuration.get(Constants.HIVE_ODS_LOCATION_CONF));	// 应用层location
-			
-			String part_log_day = configuration.get("custom.dw.logday", DateUtils.getYesterdayDate()); // 默认前一天 yyyy-MM-dd			
-			
-			DataDrivenDBInputSplit_Develop dataDrivenDBInputSplit = (DataDrivenDBInputSplit_Develop) context.getInputSplit();
-			
-			/**
-			 * 组装向hive快照层表load数据信息
-			 */
-			hiveDWDataSet = dataDrivenDBInputSplit.getHiveDWDataSet();
-			if(hiveDWDataSet != null) {
-				String dwtable = hiveDWDataSet.getEnnameH().toLowerCase(); // 快照层表名
-				String zkcolumns = JedisOperation.getForMap(Constants.HIVE_TAB_SCHEAM, dwhiveDB + Constants.SPECIALCOMMA + dwtable);
-				dwoutputPath = dw_db_location + "/" + dwtable + "/" + Constants.PART_LOG_DAY + part_log_day + "/" + dwtable;
+				/**
+				 * 提取Hive表名、列名
+				 */
+				HiveDataSet hiveDataSet = hiveDataSetMap.get(cfg);
+				if(hiveDataSet == null) {
+					throw TaskRunningException.NO_HIVE_DATASET_EXCEPTION;
+				}
 				
-				if(StringUtils.isNotBlank(zkcolumns)) {
-					JSONArray jsonArray = JSONArray.fromObject(zkcolumns);
+				String hiveTable = hiveDataSet.getEnnameH().toLowerCase(); // 拿到Hive表名
+				exportLocation.append(hiveTable + Constants.PATH); // 拼接数据输出-Table
+
+				/**
+				 * 提取Hive表列名
+				 */
+				String hvieTabColumns = JedisOperation.getForMap(ConfigConstants.HIVE_TAB_SCHEAM, hiveDB + Constants.SPECIALCOMMA + hiveTable);
+				
+				if(StringUtils.isNotBlank(hvieTabColumns)) {
+					JSONArray jsonArray = JSONArray.fromObject(hvieTabColumns);
 					Object[] fields = jsonArray.toArray();
 					
-					for(Object field : fields) {
-						dwfieldList.add(String.valueOf(field));
-					}
-				}
-			}
-			
-			/**
-			 * 组装向hive应用层表load数据信息
-			 */
-			hiveODSDataSet = dataDrivenDBInputSplit.getHiveODSDataSet();
-			if(hiveODSDataSet != null) {
-				String odstable = hiveODSDataSet.getEnnameH().toLowerCase(); // 应用层表名
-				String odscolumns = JedisOperation.getForMap(Constants.HIVE_TAB_SCHEAM, odshiveDB + Constants.SPECIALCOMMA + odstable);
-				odsoutputPath = ods_db_location + configuration.get("export.ods.bak.dir", "") + "/" + odstable + "/" + odstable;
-				
-				if(StringUtils.isNotBlank(odscolumns)) {
-					JSONArray jsonArray = JSONArray.fromObject(odscolumns);
-					Object[] fields = jsonArray.toArray();
+					List<String> fieldList = new ArrayList<String>();
+					hiveTabFileds.put(cfg, fieldList);
 					
 					for(Object field : fields) {
-						odsfieldList.add(String.valueOf(field));
+						fieldList.add(String.valueOf(field));
 					}
 				}
+				
+				if(cfg.contains(Constants.PART_MARK)) { // 如果输出的目标是分区表
+
+					/**
+					 * 组装分区字段
+					 */
+					String partCol = configuration.get(cfg + ConfigConstants.PART, Constants.PART_LOG_DAY); // 默认part_log_day={{timestamp}}
+					
+					if(partCol.contains(Constants.PART_LOG_DAY_SYMBOL)) { // 如果分区字段包括时间占位符；如果分区字段不是动态时间，则不需要解析时间格式
+						String partValue = DateUtils.getYesterdayDateFormat(
+								configuration.get(cfg + ConfigConstants.PART_TIMESTAMP_FORMAT, Constants.PART_LOG_DAY_TIMESTAMP_FORMAT)); // 分区字段的时间格式
+						
+						partCol.replace(Constants.PART_LOG_DAY_SYMBOL, partValue); // 将分区字段的实际值替换
+					}
+					exportLocation.append(partCol + Constants.PATH); // 拼接数据输出-分区字段
+				}
+				
+				exportLocation.append(hiveTable); // 文件后缀
+				
+				outputLocation.put(cfg, exportLocation.toString()); // 将完整的数据输出Location加入集合
 			}
 		}
 
@@ -208,27 +233,21 @@ public class ImportDBToHive extends HadoopTool {
 			}
 			
 			/**
-			 * 处理快照层数据输出
+			 * 数据输出
 			 */
-			if(StringUtils.isNotBlank(dwoutputPath) && dwfieldList.size() > 0) {
-				StringBuffer zkdataBuf = new StringBuffer();
-				for(String hiveField : dwfieldList) {
-					zkdataBuf.append(dataMap.get(hiveField) + Constants.U0001);
+			for(String cfg : outputLocation.keySet()) {
+				String location = outputLocation.get(cfg); // 数据输出的Location
+				List<String> fields = hiveTabFileds.get(cfg); // 数据输出至Hive表的Fields
+				
+				if(StringUtils.isNotBlank(location) && fields.size() > 0) {
+					StringBuffer dataBuf = new StringBuffer();
+					for(String field : fields) {
+						dataBuf.append(dataMap.get(field) + Constants.U0001);
+					}
+					outputValue.set(dataBuf.substring(0, dataBuf.length() - 1));
+					
+					multipleOutputs.write(outputKey, outputValue, location); // 数据输出
 				}
-				outputValue.set(zkdataBuf.substring(0, zkdataBuf.length() - 1));
-				multipleOutputs.write(outputKey, outputValue, dwoutputPath);
-			}
-			
-			/**
-			 * 处理应用层数据输出
-			 */
-			if(StringUtils.isNotBlank(odsoutputPath) && odsfieldList.size() > 0) {
-				StringBuffer odsdataBuf = new StringBuffer();
-				for(String hiveField : odsfieldList) {
-					odsdataBuf.append(dataMap.get(hiveField) + Constants.U0001);
-				}
-				outputValue.set(odsdataBuf.substring(0, odsdataBuf.length() - 1));
-				multipleOutputs.write(outputKey, outputValue, odsoutputPath);
 			}
 		}
 

@@ -1,7 +1,6 @@
 package org.frozen.util;
 
 import com.google.common.collect.Lists;
-import org.frozen.bean.SchemaBean;
 import net.sf.json.JSONObject;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;

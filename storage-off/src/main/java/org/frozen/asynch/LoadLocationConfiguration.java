@@ -8,7 +8,7 @@ import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.bean.loadHiveBean.HiveMetastore;
 import org.frozen.constant.ConfigConstants;
 import org.frozen.constant.Constants;
-import org.frozen.exception.BuildDriverException;
+import org.frozen.exception.ImportDBToHiveException;
 import org.frozen.util.JedisOperation;
 import org.frozen.util.XmlUtil;
 
@@ -36,14 +36,14 @@ public class LoadLocationConfiguration implements Runnable {
 		String[] tConfigs = tConfig.split(Constants.COMMA);
 		
 		if(tConfigs.length <= 0) // 无数据输出配置项
-			throw BuildDriverException.NO_EXPORT_CONFIG;
+			throw ImportDBToHiveException.NO_EXPORT_CONFIG_EXCEPTION;
 		
 		for(String cfg : tConfigs) { // 循环每个输出-配置文件
 			
-			String location_hive_config = configuration.get(cfg + Constants.LOCATION_HIVE);
+			String location_hive_config = configuration.get(cfg + ConfigConstants.LOCATION_HIVE);
 			
 			if(StringUtils.isBlank(location_hive_config))
-				throw BuildDriverException.NO_HIVE_TAB_CONFIG;
+				throw ImportDBToHiveException.NO_HIVE_TAB_CONFIG_EXCEPTION;
 
 			/**
 			 * 加载输出到Hive表-XML配置文件

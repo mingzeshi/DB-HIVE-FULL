@@ -147,7 +147,6 @@ public class XmlUtil {
 
         	importRDBDataSetList.add(new ImportRDB_XMLDataSet(enname, chname, uniqueKey, storage, conditions, fields, description_t));
         }
-
         return importRDBDataSetDB;
 	}
 	

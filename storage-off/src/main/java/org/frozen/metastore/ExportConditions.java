@@ -91,7 +91,7 @@ public class ExportConditions {
 
 		Map<String, String> hiveTableSchema = new HashMap<String, String>();
 
-		HiveMetastore hiveMetastore = XmlUtil.parserHdfsLoadToHiveDWXML(xmlPath, null); // 获取配置文件数据库相关信息
+		HiveMetastore hiveMetastore = XmlUtil.parserLoadToHiveXML(xmlPath, null); // 获取配置文件数据库相关信息
 
 		Connection connection = JDBCUtil.getConn(hiveMetastore.getDriver(), hiveMetastore.getUrl(), hiveMetastore.getUsername(), hiveMetastore.getPassword());
 

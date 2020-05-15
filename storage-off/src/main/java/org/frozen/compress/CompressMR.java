@@ -1,10 +1,6 @@
 package org.frozen.compress;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 import java.util.UUID;
@@ -24,8 +20,6 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
-import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-
 import org.frozen.mr.datadrivendbinputformat.DeleteExistsTextOutputFormat;
 import org.frozen.util.HadoopTool;
 import org.frozen.util.HadoopUtil;
@@ -53,7 +47,6 @@ public class CompressMR extends HadoopTool  {
 		job.setMapperClass(CompressMRMapper.class);
 
 		job.setInputFormatClass(TextInputFormat.class);
-//		job.setOutputFormatClass(TextOutputFormat.class);
 		
 		job.setOutputFormatClass(DeleteExistsTextOutputFormat.class);
 

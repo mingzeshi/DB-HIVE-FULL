@@ -7,6 +7,8 @@ public interface ConfigConstants {
 	
 	String IMPORT_DB_CONFIG_PATH = "import.db.config.path";
 	
+	String IMPORT_DB_BLACKLIST_PATH = "import.db.blacklist.path";
+	
 	String IMPORT_DB_DRIVER = "import_db_driver";
 	String IMPORT_DB_URL = "import.db_url";
 	String IMPORT_DB_USERNAME = "import.db.username";
@@ -25,6 +27,9 @@ public interface ConfigConstants {
     String HIVE_DB_LOCATION = "hive_db_location";
     String HIVE_TAB_SCHEAM = "hive_tab_schema";
     
+    String PART = ".part"; // 分区字段
+    String PART_TIMESTAMP_FORMAT = ".part.timestamp.format"; // 分区时间格式
+    
     /**
      * 以下配置项，是后缀
      * 由于可以输出至多个Hive-Location，hc1,hcP1,hc2,hcP2
@@ -34,7 +39,11 @@ public interface ConfigConstants {
      * 		hc2.hive.db.location, hc2.hive.db
      * 		hcP2.hive.db.location, hcP2.hive.db
      */
-    String HIVE_LOCATION = "hive.db.location"; // Hive-DB-Location路径
-    String HIVE_DB = "hive.db"; // Hive-DB
+    String HIVE_LOCATION = ".hive.db.location"; // Hive-DB-Location路径
+    String HIVE_DB = ".hive.db"; // Hive-DB
+    
+    // 文件输出位置-配置项后缀Hive、HDFS
+    String LOCATION_HIVE = ".hive";
+    String LOCATION_HDFS = ".hdfs";
 
 }

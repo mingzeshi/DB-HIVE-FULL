@@ -72,6 +72,18 @@ public class DateUtils {
 	}
 	
 	/**
+	 * 获取昨天的日期, 自定义时间格式
+	 * @return 昨天的日期
+	 */
+	public static String getYesterdayDateFormat(String format) {
+		Calendar cal = Calendar.getInstance();
+		cal.setTime(new Date());  
+		cal.add(Calendar.DAY_OF_YEAR, -1);  
+		
+		return new SimpleDateFormat(format).format(cal.getTime());
+	}
+	
+	/**
 	 * 格式化日期（yyyy-MM-dd）
 	 * @param date Date对象
 	 * @return 格式化后的日期

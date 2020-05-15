@@ -6,6 +6,11 @@
         <name>import.db.config.path</name>
         <value>/server/app/mr/product/ImportConfig.xml</value>
     </property>
+    
+    <property>
+        <name>import.db.blacklist.path</name>
+        <value>/server/app/mr/product/blackList.txt</value>
+    </property>
 	
 	<!-- 数据输出配置项 -->
 	<property>
@@ -34,7 +39,7 @@
         <name>hcP1.hdfs</name>
         <value>/files/20200217/product_tf/ods/</value>
     </property>
-    
+
 	<!-- 分区表的分区字段 如果有时间变量 使用{{timestamp}}占位 -->
     <property>
         <name>hcP1.part</name>
@@ -42,7 +47,7 @@
     </property>
 	<!-- 如果分区表的分区字段有时间变量 用来设置时间格式 -->
 	<property>
-        <name>hcP1.part.timestamp</name>
+        <name>hcP1.part.timestamp.format</name>
         <value>yyyy-MM-dd</value>
     </property>
 

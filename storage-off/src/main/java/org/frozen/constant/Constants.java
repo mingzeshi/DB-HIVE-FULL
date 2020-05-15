@@ -28,12 +28,14 @@ public interface Constants {
     String COLON = "\\:";
     String LINE_N = "\n";
     String LINE_R = "\r";
+    String PART = "\\=";
     
     // 拼接符号
     String SPECIALCHAR = ",";
     String SPECIALCOMMA = ".";
     String SPECIALCOLON = ":";
     String KEY_VALUE_JOIN = "#=#=#";
+    String PATH = "/";
 
     // 目录名称
     String MERGE_DATA = "UPDATE";
@@ -50,7 +52,11 @@ public interface Constants {
     String ENGINE2 = "E2";
     
     String OUT_FORMAT_SUFFIX = "_other"; // 文件其它数据输出目录后缀
-    String PART_LOG_DAY = "part_log_day="; // hive表分区字段
+    
+    String PART_LOG_DAY_SYMBOL = "{{timestamp}}"; // 默认的占位符号
+    String PART_LOG_DAY = "part_log_day=" + PART_LOG_DAY_SYMBOL; // hive表分区字段
+    String PART_LOG_DAY_TIMESTAMP_FORMAT = "yyyy-MM-dd"; // 默认的分区字段时间格式
+    
     String HIVE_DATA_PROCESS = "_process"; // hvie数据预处理完成输出目录后缀
     
     // Bean-package路径
@@ -82,8 +88,4 @@ public interface Constants {
     
     // 分区表标识 P
     String PART_MARK = "P";
-    
-    // 文件输出位置-配置项后缀Hive、HDFS
-    String LOCATION_HIVE = ".hive";
-    String LOCATION_HDFS = ".hdfs";
 }

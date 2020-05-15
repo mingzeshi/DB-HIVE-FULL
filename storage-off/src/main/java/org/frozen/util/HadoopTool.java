@@ -17,9 +17,11 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.MRJobConfig;
-import org.apache.hadoop.mapreduce.lib.jobcontrol.JobControl;
 import org.apache.hadoop.util.GenericOptionsParser;
 import org.apache.hadoop.util.Tool;
+import org.frozen.exception.BaseException;
+import org.frozen.exception.BuildDriverCommonException;
+import org.frozen.exception.ImportDBToHiveException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +50,7 @@ public abstract class HadoopTool extends Configured implements Tool {
             String configFilePath = configuration.get("configFile");
             String tempConfig = configuration.get("tempConfig");
             
-            configuration.addResource("Common.xml");
+//            configuration.addResource("Common.xml");
             
             if(StringUtils.isNotBlank(tempConfig)) { // 用于测试
             	configuration.addResource(new Path(tempConfig));
@@ -57,8 +59,7 @@ public abstract class HadoopTool extends Configured implements Tool {
             if(StringUtils.isNotBlank(configFilePath)) {
             	configuration.addResource(new Path(configFilePath));
             } else {
-            	log.info("找不到：configFile参数，例：-DconfigFile=/config/configfile.xml");
-            	return;
+            	throw BuildDriverCommonException.NO_CONFIG_FILE_EXCEPTION;
             }
 
             String val;
@@ -73,8 +74,12 @@ public abstract class HadoopTool extends Configured implements Tool {
             tool.setConf(configuration);
 
             tool.run(toolArgs);
-        } catch (Exception e) {
-            log.info("exec failed: " + toolId, e);
+        } catch (BaseException e) {
+            log.error("exec failed: " + toolId, e);
+            throw e;
+        } catch(Exception ex) {
+        	log.error("exec failed: " + toolId, ex);
+        	throw new RuntimeException();
         } finally {
             log.info("exec end: ---------------");
         }
