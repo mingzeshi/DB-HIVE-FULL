@@ -2,6 +2,9 @@ package org.frozen.bean.loadHiveBean;
 
 import java.util.List;
 
+import org.dom4j.DocumentHelper;
+import org.dom4j.Element;
+
 /**
  * @描述：mysql表与hive表映射相关信息bean
  */
@@ -61,5 +64,23 @@ public class HiveDataSet {
 
 	public void setHiveODSFieldList(List<HiveField> hiveFieldList) {
 		this.hiveFieldList = hiveFieldList;
+	}
+	
+	@Override
+	public String toString() {
+		return "<DataSet ENNameM=\"" + ennameM + "\" ENNameH=\"" + ennameH + "\" CHName=\"" + chname + "\" Description=\"" + description + "\"></DataSet>";
+	}
+	
+	/**
+	 * 创建XML节点
+	 */
+	public Element toXMLElement() {
+		Element price = DocumentHelper.createElement("DataSet");
+		price.addAttribute("ENNameM", ennameM);
+		price.addAttribute("ENNameH", ennameH);
+		price.addAttribute("CHName", chname);
+		price.addAttribute("Description", description);
+	
+		return price;
 	}
 }

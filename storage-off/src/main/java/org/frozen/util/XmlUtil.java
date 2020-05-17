@@ -1,7 +1,11 @@
 package org.frozen.util;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
@@ -9,7 +13,9 @@ import org.dom4j.Attribute;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
+import org.dom4j.io.OutputFormat;
 import org.dom4j.io.SAXReader;
+import org.dom4j.io.XMLWriter;
 import org.frozen.bean.importDBBean.ImportRDB_XMLDataSet;
 import org.frozen.bean.importDBBean.ImportRDB_XMLDataSetDB;
 import org.frozen.bean.loadHiveBean.HiveDataBase;
@@ -22,6 +28,18 @@ public class XmlUtil {
 //		DataSetDB dataSetDB = XmlUtil.parserXml("C:/Users/Administrator/Desktop/文件/20190211/ImportConfiguration.xml");
 //		System.out.println(dataSetDB);
 //	}
+	
+	// ----------------------------------------------------------------
+	
+	/**
+	 * 获取XML文件的 Document
+	 */
+	public static Document loadXML(String xmlF) throws Exception {
+		File inputXml = new File(xmlF); // 文件
+		SAXReader saxReader = new SAXReader(); // 构建xml文档解析器
+		
+		return saxReader.read(inputXml); // 加载xml
+	}
 	
 	// ----------------------------------------------------------------
 	
@@ -180,5 +198,24 @@ public class XmlUtil {
         for(Element element : elements) {
         	parser(element);
         }
+	}
+
+	/**
+	 * 将数据写入XML，并将老文件做备份
+	 */
+	public static void writeXML(String import_db_config_path, List<Element> elements) throws Exception {
+		File xmlFile = new File(import_db_config_path);
+		if(xmlFile.exists()) { // 将老文件重名名
+			xmlFile.renameTo(new File(import_db_config_path + "_bak_" + DateUtils.formatNumber(new Date())));
+		}
+		
+		OutputFormat format = OutputFormat.createPrettyPrint();
+		format.setEncoding("UTF-8");
+		
+		XMLWriter writer = new XMLWriter(
+				new OutputStreamWriter(new FileOutputStream(import_db_config_path)), format);
+
+		writer.write(elements);
+		writer.close();
 	}
 }

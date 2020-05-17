@@ -26,6 +26,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.dom4j.Document;
+import org.dom4j.Element;
 import org.frozen.bean.importDBBean.ImportRDB_XMLDataSet;
 import org.frozen.bean.importDBBean.ImportRDB_XMLDataSetDB;
 import org.frozen.bean.loadHiveBean.HiveDataBase;
@@ -83,7 +85,22 @@ public class TableBalance extends HadoopTool {
 				
 				@Override
 				public void run() {
-					Queue<String> tableNotExistsQueue = connectionMonitor.getConfigTabNotExistsQueue();
+					try {
+						Document xmlDocument = XmlUtil.loadXML(import_db_config_path);
+
+						Queue<String> tableNotExistsQueue = connectionMonitor.getConfigTabNotExistsQueue();
+						
+						Element rootElement = xmlDocument.getRootElement();
+						List<Element> elements = rootElement.elements();
+						
+						for(String tableNotExists : tableNotExistsQueue) { // 循环删除失去的表
+							elements.remove(rootElement.element(tableNotExists)); // 删除节点
+						}
+						
+						XmlUtil.writeXML(import_db_config_path, elements); // 将修改过后的XML文档写入文件中
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				}
 			});
 		}
@@ -109,7 +126,7 @@ public class TableBalance extends HadoopTool {
 		
 		Integer noBalanceCount = tableBalanceMonitor.checkDBHiveTableBalance(import_db_config_path, oConfig);
 
-		if(noBalanceCount > 0) {
+		if(noBalanceCount > 0) { // 有表结构的变更、新增表
 			threadPool.execute(new Runnable() { // 修改表结构
 				
 				@Override
@@ -130,8 +147,25 @@ public class TableBalance extends HadoopTool {
 			threadPool.execute(new Runnable() { // 新建表-导入的数据库配置-XML变更
 				@Override
 				public void run() {
-					Queue<String> importConfigQueue = tableBalanceMonitor.getImportConfigQueue();
-					
+					try {
+						Queue<ImportRDB_XMLDataSet> importConfigQueue = tableBalanceMonitor.getImportConfigQueue();
+						
+						Document xmlDocument = XmlUtil.loadXML(import_db_config_path);
+						
+						Element rootElement = xmlDocument.getRootElement();
+						
+						List<Element> elements = rootElement.elements();
+						
+						for (ImportRDB_XMLDataSet importConfig : importConfigQueue) { // 加入节点
+							Element beanElement = importConfig.toXMLElement();
+							
+							elements.add(beanElement); // 加入
+						}
+						
+						XmlUtil.writeXML(import_db_config_path, elements); // 将修改过后的XML文档写入文件中
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				}
 			});
 			
@@ -139,7 +173,28 @@ public class TableBalance extends HadoopTool {
 			threadPool.execute(new Runnable() { // 新建表-导入到Hive表配置-XML变更
 				@Override
 				public void run() {
-					Queue<String> hiveXMLQueue = tableBalanceMonitor.getHiveXMLQueue();
+					try {
+						Queue<HiveDataSet> hiveXMLQueue = tableBalanceMonitor.getHiveXMLQueue();
+						
+						for(String cfg : tConfigs) { // 循环每个输出-配置文件
+							String xmlPath = configuration.get(cfg + ConfigConstants.LOCATION_HIVE);
+							Document xmlDocument = XmlUtil.loadXML(xmlPath);
+
+							Element rootElement = xmlDocument.getRootElement();
+							
+							List<Element> elements = rootElement.elements();
+							
+							for (HiveDataSet hiveXML : hiveXMLQueue) { // 加入节点
+								Element beanElement = hiveXML.toXMLElement();
+								
+								elements.add(beanElement); // 加入
+							}
+							
+							XmlUtil.writeXML(xmlPath, elements); // 将修改过后的XML文档写入文件中
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				}
 			});
 			
@@ -278,8 +333,8 @@ public class TableBalance extends HadoopTool {
 		private Queue<String> addColumnsDDLQueue = new ConcurrentLinkedQueue<String>();
 		private Queue<String> createTableDDLQueue = new ConcurrentLinkedQueue<String>();
 		
-		private Queue<String> importConfigQueue = new ConcurrentLinkedQueue<String>();
-		private Queue<String> hiveXMLQueue = new ConcurrentLinkedQueue<String>();
+		private Queue<ImportRDB_XMLDataSet> importConfigQueue = new ConcurrentLinkedQueue<ImportRDB_XMLDataSet>();
+		private Queue<HiveDataSet> hiveXMLQueue = new ConcurrentLinkedQueue<HiveDataSet>();
 		
 		// ======================================================================
 		
@@ -291,11 +346,11 @@ public class TableBalance extends HadoopTool {
 			return createTableDDLQueue;
 		}
 
-		public Queue<String> getImportConfigQueue() {
+		public Queue<ImportRDB_XMLDataSet> getImportConfigQueue() {
 			return importConfigQueue;
 		}
 
-		public Queue<String> getHiveXMLQueue() {
+		public Queue<HiveDataSet> getHiveXMLQueue() {
 			return hiveXMLQueue;
 		}
 		
@@ -410,13 +465,13 @@ public class TableBalance extends HadoopTool {
 			}
 			checkN_TAB_COL.info("");
 			
-			for(String str : importConfigQueue) {
-				checkN_TAB_COL.info(str);
+			for(ImportRDB_XMLDataSet str : importConfigQueue) {
+				checkN_TAB_COL.info(str.toString());
 			}
 			checkN_TAB_COL.info("");
 
-			for(String str : hiveXMLQueue) {
-				checkN_TAB_COL.info(str);
+			for(HiveDataSet str : hiveXMLQueue) {
+				checkN_TAB_COL.info(str.toString());
 			}
 			
 			checkN_TAB_COL.info("");
@@ -523,12 +578,30 @@ public class TableBalance extends HadoopTool {
 
 		private void generateXML(String table, String uniqueKey) {
 			
-			String importConfig = "<DataSet ENName=\"" + table + "\" CHName=\"\" UniqueKey=\"" + uniqueKey + "\" Storage=\"" + dbType + "\" Conditions=\"\" Fields=\"*\" Description=\"\"></DataSet>";
+//			String importConfig = "<DataSet ENName=\"" + table + "\" CHName=\"\" UniqueKey=\"" + uniqueKey + "\" Storage=\"" + dbType + "\" Conditions=\"\" Fields=\"*\" Description=\"\"></DataSet>";
+			importConfigQueue.add(
+					new ImportRDB_XMLDataSet(
+							table, 
+							"", 
+							uniqueKey, 
+							dbType, 
+							"", 
+							Constants.SELECT_ALL, 
+							"")
+					);
 			
-			String loadToHive = "<DataSet ENNameM=\"" + table + "\" ENNameH=\"" + table + "\" CHName=\"\" Description=\"\"></DataSet>";
+//			String loadToHive = "<DataSet ENNameM=\"" + table + "\" ENNameH=\"" + table + "\" CHName=\"\" Description=\"\"></DataSet>";
+			hiveXMLQueue.add(
+					new HiveDataSet(
+							table, 
+							table, 
+							"", 
+							"", 
+							null)
+					);
 			
-			importConfigQueue.add(importConfig);		
-			hiveXMLQueue.add(loadToHive);	
+//			importConfigQueue.add(importConfig);
+//			hiveXMLQueue.add(loadToHive);	
 		}
 		
 		/**

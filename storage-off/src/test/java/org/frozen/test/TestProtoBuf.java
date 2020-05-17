@@ -1,8 +1,5 @@
 package org.frozen.test;
 
-import com.google.protobuf.GeneratedMessage;
-import org.frozen.util.ProtoBufTools;
-
 public class TestProtoBuf {
 	
 	public static void main(String[] args) {

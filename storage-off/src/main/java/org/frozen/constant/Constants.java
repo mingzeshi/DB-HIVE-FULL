@@ -36,6 +36,7 @@ public interface Constants {
     String SPECIALCOLON = ":";
     String KEY_VALUE_JOIN = "#=#=#";
     String PATH = "/";
+    String SELECT_ALL = "*";
 
     // 目录名称
     String MERGE_DATA = "UPDATE";

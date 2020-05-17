@@ -1,5 +1,8 @@
 package org.frozen.bean.importDBBean;
 
+import org.dom4j.DocumentHelper;
+import org.dom4j.Element;
+
 /**
  * 表信息bean
  * @author Administrator
@@ -82,5 +85,26 @@ public class ImportRDB_XMLDataSet {
 
 	public void setDescription(String description) {
 		this.description = description;
-	}	
+	}
+	
+	@Override
+	public String toString() {
+		return "<DataSet ENName=\"" + enname + "\" CHName=\"" + chname + "\" UniqueKey=\"" + uniqueKey + "\" Storage=\"" + storage + "\" Conditions=\"" + conditions + "\" Fields=\" " + fields + "\" Description=\"" + description + "\"></DataSet>";
+	}
+
+	/**
+	 * 创建XML节点
+	 */
+	public Element toXMLElement() {
+		Element price = DocumentHelper.createElement("DataSet");
+		price.addAttribute("ENName", enname);
+		price.addAttribute("CHName", chname);
+		price.addAttribute("UniqueKey", uniqueKey);
+		price.addAttribute("Storage", storage);
+		price.addAttribute("Conditions", conditions);
+		price.addAttribute("Fields", fields);
+		price.addAttribute("Description", description);
+		
+		return price;
+	}
 }
