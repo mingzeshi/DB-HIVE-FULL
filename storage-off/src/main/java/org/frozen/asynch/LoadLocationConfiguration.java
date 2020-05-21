@@ -9,6 +9,7 @@ import org.frozen.bean.loadHiveBean.HiveMetastore;
 import org.frozen.constant.ConfigConstants;
 import org.frozen.constant.Constants;
 import org.frozen.exception.ImportDBToHiveException;
+import org.frozen.exception.RedisException;
 import org.frozen.util.JedisOperation;
 import org.frozen.util.XmlUtil;
 
@@ -31,6 +32,14 @@ public class LoadLocationConfiguration implements Runnable {
 		configuration.set(ConfigConstants.IMPORT_DB_USERNAME, dataSetDB.getUsername()); // 用户名
 		configuration.set(ConfigConstants.IMPORT_DB_PASSWORD, dataSetDB.getPassword()); // 密码
 		
+		JedisOperation jedisOperation = null;
+		try {
+			jedisOperation = JedisOperation.getInstance(configuration.get(
+					ConfigConstants.REDIS_HOST), configuration.getInt(ConfigConstants.REDIS_PORT, 6480), configuration.get(ConfigConstants.REDIS_PASSWORD));
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+		
 		String tConfig = this.configuration.get(ConfigConstants.LOAD_HIVE_CONFIG); // 数据输出配置项
 		
 		String[] tConfigs = tConfig.split(Constants.COMMA);
@@ -51,7 +60,10 @@ public class LoadLocationConfiguration implements Runnable {
 			HiveMetastore hiveMetastore = XmlUtil.parserLoadToHiveXML(location_hive_config, "db");
 			HiveDataBase<HiveDataSet> dataBaseList = hiveMetastore.getHiveDataBaseList().get(0); // 获取hive-db的location
 			
-			String hive_db_location = JedisOperation.getForMap(ConfigConstants.HIVE_DB_LOCATION, dataBaseList.getEnnameH()); // 获取HiveDB的Location路径
+			if(jedisOperation == null)
+				throw RedisException.JEDISOPERATION_NULL_EXCEPTION;
+
+			String hive_db_location = jedisOperation.getForMap(ConfigConstants.HIVE_DB_LOCATION, dataBaseList.getEnnameH()); // 获取HiveDB的Location路径
 			
 			this.configuration.set(cfg + ConfigConstants.HIVE_LOCATION, hive_db_location); // Hive-DB-Location
 			this.configuration.set(cfg + ConfigConstants.HIVE_DB, dataBaseList.getEnnameH()); // Hive-DB

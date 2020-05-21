@@ -36,6 +36,10 @@ import org.frozen.bean.loadHiveBean.HiveMetastore;
 import org.frozen.constant.ConfigConstants;
 import org.frozen.constant.Constants;
 import org.frozen.exception.TableBalanceException;
+import org.frozen.hive.HiveMetastoreUtil;
+import org.frozen.hive.HiveUtil;
+import org.frozen.metastore.HiveTableSchema;
+import org.frozen.util.FileUtil;
 import org.frozen.util.HadoopTool;
 import org.frozen.util.JDBCUtil;
 import org.frozen.util.XmlUtil;
@@ -71,7 +75,7 @@ public class TableBalance extends HadoopTool {
 		ExecutorService threadPool = Executors.newCachedThreadPool();
 
 		Configuration configuration = getConf();
-		
+
 		/**
 		 * 检查连接与表状态：
 		 * 	数据库连接是否正常
@@ -121,29 +125,16 @@ public class TableBalance extends HadoopTool {
 					configuration.get(cfg + ConfigConstants.PART) == null ? "" : configuration.get(cfg + ConfigConstants.PART).split(Constants.PART)[0]));
 		}
 		
-		TableBalanceMonitor tableBalanceMonitor = TableBalanceMonitor.getInstance(configuration.get(
-				ConfigConstants.IMPORT_DB_BLACKLIST_PATH)); // 不导入Hive的数据库表
+		TableBalanceMonitor tableBalanceMonitor = TableBalanceMonitor.getInstance(); // 不导入Hive的数据库表
+		tableBalanceMonitor.setBlackList(configuration.get(ConfigConstants.IMPORT_DB_BLACKLIST_PATH), configuration.get(ConfigConstants.IMPORT_DB_BLACKLIST_FILTER));
+		
+		Tuple<String, String> metastoreURIS = new Tuple<String, String>(ConfigConstants.HIVE_METASTORE_URIS, configuration.get(ConfigConstants.HIVE_METASTORE_URIS));
+		tableBalanceMonitor.setMetastoreURIS(metastoreURIS);
 		
 		Integer noBalanceCount = tableBalanceMonitor.checkDBHiveTableBalance(import_db_config_path, oConfig);
 
 		if(noBalanceCount > 0) { // 有表结构的变更、新增表
-			threadPool.execute(new Runnable() { // 修改表结构
-				
-				@Override
-				public void run() {
-					Queue<String> addColumnsDDLQueue = tableBalanceMonitor.getAddColumnsDDLQueue();
-				}
-			});
-			
-			
-			threadPool.execute(new Runnable() { // 新建表
-				@Override
-				public void run() {
-					Queue<String> createTableDDLQueue = tableBalanceMonitor.getCreateTableDDLQueue();
-				}
-			});
-			
-			
+
 			threadPool.execute(new Runnable() { // 新建表-导入的数据库配置-XML变更
 				@Override
 				public void run() {
@@ -170,14 +161,56 @@ public class TableBalance extends HadoopTool {
 			});
 			
 			
+			/**
+			 * 加载操作Hive的信息
+			 */
+			String DRIVER = configuration.get(ConfigConstants.HIVE_DRIVER);
+			String URL = configuration.get(ConfigConstants.HIVE_URL);
+			String USERNAME = configuration.get(ConfigConstants.HIVE_USERNAME);
+			String PASSWORD = configuration.get(ConfigConstants.HIVE_PASSWORK);
+			
 			threadPool.execute(new Runnable() { // 新建表-导入到Hive表配置-XML变更
 				@Override
 				public void run() {
 					try {
 						Queue<HiveDataSet> hiveXMLQueue = tableBalanceMonitor.getHiveXMLQueue();
+
+						HiveUtil hiveUtil = HiveUtil.getInstance();
+						
+						Connection connection = hiveUtil.createOrGetConnection(
+								DRIVER, 
+								URL, 
+								USERNAME, 
+								PASSWORD
+								);
+						
+						Statement statement = connection.createStatement();
+
+						Queue<String> addColumnsDDLQueue = tableBalanceMonitor.getAddColumnsDDLQueue();
+						
+						Queue<String> createTableDDLQueue = tableBalanceMonitor.getCreateTableDDLQueue();
+
 						
 						for(String cfg : tConfigs) { // 循环每个输出-配置文件
 							String xmlPath = configuration.get(cfg + ConfigConstants.LOCATION_HIVE);
+							
+							/**
+							 * 修改Hive表结构
+							 */
+							for(String createTableDDL : createTableDDLQueue) { // 建表
+								statement.execute(createTableDDL);
+								
+								
+							}
+							
+							for(String addColumnsDDL : addColumnsDDLQueue) { // 修改表结构
+								statement.execute(addColumnsDDL);
+							}
+
+							
+							/**
+							 *  写XML
+							 */
 							Document xmlDocument = XmlUtil.loadXML(xmlPath);
 
 							Element rootElement = xmlDocument.getRootElement();
@@ -198,13 +231,35 @@ public class TableBalance extends HadoopTool {
 				}
 			});
 			
+			threadPool.execute(new Runnable() {
+				
+				@Override
+				public void run() {
+					Queue<String> blackListQueue = tableBalanceMonitor.getBlackListQueue();
+					
+					StringBuffer message = new StringBuffer();
+					
+					for(String black : blackListQueue) {
+						message.append(black);
+						message.append(Constants.LINE_N + Constants.LINE_R);
+					}
+					try {
+						FileUtil.writeFile(configuration.get(ConfigConstants.IMPORT_DB_BLACKLIST_PATH), message.toString(), true);
+					} catch(Exception e) {
+						throw new RuntimeException(e);
+					}
+				}
+			});
 		}
 		
 		/**
 		 * 刷新Redis中的元数据信息
 		 */
-		
-		
+		for(String cfg : tConfigs) { // 循环每个输出-配置文件
+			String xmlPath = configuration.get(cfg + ConfigConstants.LOCATION_HIVE);
+			threadPool.execute(new HiveTableSchema(configuration, xmlPath)); // 将刷新Hive-Table-Schema的任务加入到线程池中
+		}
+
 		return 0;
 	}
 	
@@ -328,13 +383,17 @@ public class TableBalance extends HadoopTool {
 		private Map<String, Integer> externalColTypes;
 		private String hiveDatabaseName;
 		private String blackList;
+		private String blackListFilter;
 		private static volatile TableBalanceMonitor tableBalanceMonitor;
+		private Tuple<String, String> metastoreURIS;
 		
 		private Queue<String> addColumnsDDLQueue = new ConcurrentLinkedQueue<String>();
 		private Queue<String> createTableDDLQueue = new ConcurrentLinkedQueue<String>();
 		
 		private Queue<ImportRDB_XMLDataSet> importConfigQueue = new ConcurrentLinkedQueue<ImportRDB_XMLDataSet>();
 		private Queue<HiveDataSet> hiveXMLQueue = new ConcurrentLinkedQueue<HiveDataSet>();
+		
+		private Queue<String> blackListQueue = new ConcurrentLinkedQueue<String>();
 		
 		// ======================================================================
 		
@@ -354,21 +413,33 @@ public class TableBalance extends HadoopTool {
 			return hiveXMLQueue;
 		}
 		
-		// ======================================================================
+		public Queue<String> getBlackListQueue() {
+			return blackListQueue;
+		}
 		
+		// ======================================================================
+
 		/**
 		 * 单例对象
 		 */
-		public static TableBalanceMonitor getInstance(String blackList) {
+		public static TableBalanceMonitor getInstance() {
 			if(tableBalanceMonitor == null) {
 				synchronized (TableBalanceMonitor.class) {
 					if(tableBalanceMonitor == null) {
 						tableBalanceMonitor = new TableBalanceMonitor();
-						tableBalanceMonitor.blackList = blackList;
 					}
 				}
 			}
 			return tableBalanceMonitor;
+		}
+		
+		public void setBlackList(String blackList, String blackListFilter) {
+			tableBalanceMonitor.blackList = blackList;
+			tableBalanceMonitor.blackListFilter = blackListFilter;
+		}
+		
+		public void setMetastoreURIS(Tuple<String, String> metastoreURIS) {
+			this.metastoreURIS = metastoreURIS;
 		}
 		
 		/**
@@ -473,7 +544,11 @@ public class TableBalance extends HadoopTool {
 			for(HiveDataSet str : hiveXMLQueue) {
 				checkN_TAB_COL.info(str.toString());
 			}
+			checkN_TAB_COL.info("");
 			
+			for(String str : blackListQueue) {
+				checkN_TAB_COL.info(str);
+			}
 			checkN_TAB_COL.info("");
 		}
 		
@@ -492,7 +567,9 @@ public class TableBalance extends HadoopTool {
 					String thisLine = null;
 					br = new BufferedReader(new FileReader(blackList));
 			         while ((thisLine = br.readLine()) != null) {
-			        	 dbTablesBlackList.add(thisLine);
+			        	 if(StringUtils.isNotBlank(thisLine)) {
+			        		 dbTablesBlackList.add(thisLine);
+			        	 }
 			         }       
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -534,6 +611,17 @@ public class TableBalance extends HadoopTool {
 			// db 中存在的表，hive 中未拉取
 			if(dbTables.size() > 0) {
 				for(String table : dbTables.keySet()) {
+					/**
+					 * 判断此表是否需要加入BlackList
+					 */
+					
+					for(String blkFilter : blackListFilter.split(Constants.COMMA)) {
+						if(table.contains(blkFilter)) { // 如果包含要过滤表的字符串
+							blackListQueue.add(table);
+							continue;
+						}
+					}
+					
 					String createTablesDDL = getCreateTableStmt(databaseOperate, table, table, isPartitioned, part);
 
 					createTableDDLQueue.add(createTablesDDL);
@@ -596,6 +684,7 @@ public class TableBalance extends HadoopTool {
 							table, 
 							table, 
 							"", 
+							Constants.IMPORT_APPEND_DEFAULT, 
 							"", 
 							null)
 					);
@@ -631,7 +720,7 @@ public class TableBalance extends HadoopTool {
 					isPart = "cascade";
 				}
 		
-				String addColumnsDDL = "alter table " + hvieTable + " add columns(" + column + " " + hiveColType + ") " + isPart + ";";
+				String addColumnsDDL = "alter table `" + hvieTable + "` add columns(`" + column + "` " + hiveColType + ") " + isPart + ";";
 				
 				addColumnsDDLQueue.add(addColumnsDDL);
 			}
@@ -762,13 +851,12 @@ public class TableBalance extends HadoopTool {
 		 * @param xmlPath
 		 * @return
 		 */
-		private Map<Tuple<String, String>, Set<String>> readXML(String xmlPath) {
+		private Map<Tuple<String, String>, Set<String>> readXML(String xmlPath) throws Exception {
 
 			Map<Tuple<String, String>, Set<String>> hiveTableSchema = new HashMap<Tuple<String, String>, Set<String>>();
 
 			HiveMetastore hiveMetastore = XmlUtil.parserLoadToHiveXML(xmlPath, null); // 获取配置文件数据库相关信息
-
-			Connection connection = JDBCUtil.getConn(hiveMetastore.getDriver(), hiveMetastore.getUrl(), hiveMetastore.getUsername(), hiveMetastore.getPassword());
+			HiveMetastoreUtil hiveMetastoreUtil = HiveMetastoreUtil.getInstance(metastoreURIS);
 
 			List<HiveDataBase> dataBaseList = hiveMetastore.getHiveDataBaseList();
 			
@@ -784,7 +872,7 @@ public class TableBalance extends HadoopTool {
 					String keyM = dataSet.getEnnameM();
 					String keyH = dataSet.getEnnameH();
 
-					List<String> vlauesArray = JDBCUtil.getHiveTabColumns(connection, dataBase.getEnnameH().toLowerCase(), dataSet.getEnnameH().toLowerCase());
+					List<String> vlauesArray = hiveMetastoreUtil.getTabColumns(dataBase.getEnnameH().toLowerCase(), dataSet.getEnnameH().toLowerCase());
 
 					Set<String> valuesHashSet = new HashSet<String>();
 

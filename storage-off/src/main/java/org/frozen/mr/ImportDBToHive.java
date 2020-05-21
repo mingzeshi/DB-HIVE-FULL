@@ -3,8 +3,10 @@ package org.frozen.mr;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -25,6 +27,8 @@ import org.frozen.bean.importDBBean.ImportDataBean;
 import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.constant.ConfigConstants;
 import org.frozen.constant.Constants;
+import org.frozen.exception.BuildDriverCommonException;
+import org.frozen.exception.RedisException;
 import org.frozen.exception.TaskRunningException;
 import org.frozen.mr.datadrivendbinputformat.DataDrivenDBInputFormat_Develop;
 import org.frozen.mr.datadrivendbinputformat.DataDrivenDBInputFormat_Develop.DataDrivenDBInputSplit_Develop;
@@ -42,12 +46,40 @@ public class ImportDBToHive extends HadoopTool {
         execMain(new ImportDBToHive(), args);
     }
 	
+	public void help() {
+		System.out.println("==================================================");
+		System.out.println("yarn jar: 提交任务运行的命令");
+		System.out.println("xxx.jar: 运行任务jar文件");
+		System.out.println("db.import.hive: 数据导入具体执行的任务类");
+		System.out.println("--------------------------------------------------");
+		System.out.println("数据整库表导入：");
+		System.out.println("示例：yarn jar xxx.jar db.import.hive -DconfigFile=./common-config.xml");
+		System.out.println("-DconfigFile: 任务的配置文件~~~必传");
+		System.out.println("==================================================");
+	}
+	
 	@Override
 	public int run(String[] args) throws Exception {
-		
+
 		Configuration configuration = getConf(); // 创建配置信息
-		
-		Thread llcT = new Thread(new LoadLocationConfiguration(configuration)); // 加载XML文件、redis将hive的DB、Location信息存储到Configuration中
+
+		/**
+		 * 参数检查与验证
+		 */
+		String configFile = configuration.get(ConfigConstants.CONFIG_CONFIGFILE);
+
+		/**
+		 * 全库以配置文件的方式导入数据
+		 */
+        if(StringUtils.isNotBlank(configFile)) {
+        	configuration.addResource(new Path(configFile));        	
+        } else {
+        	help();
+        	throw BuildDriverCommonException.NO_CONFIG_FILE_EXCEPTION;
+        }
+        
+    	
+    	Thread llcT = new Thread(new LoadLocationConfiguration(configuration)); // 加载XML文件、redis将hive的DB、Location信息存储到Configuration中
 		llcT.start();
 		
 		FileSystem fileSystem = FileSystem.get(configuration); // 创建文件系统
@@ -79,16 +111,16 @@ public class ImportDBToHive extends HadoopTool {
 		job.setOutputKeyClass(NullWritable.class);
 		job.setOutputValueClass(Text.class);
 		
-		Path hpo = new Path(configuration.get("hive.data.process.other", "/hive_process/other_one/")); // 这里的目录并不是hive表数据预处理输入的目录，是MultipleOutputs产生的其它文件
+		Path hpo = new Path(configuration.get(ConfigConstants.HIVE_DATA_PROCESS_OTHER)); // 这里的目录并不是hive表数据预处理输入的目录，是MultipleOutputs产生的其它文件
 		if(HadoopUtil.fileExists(fileSystem, hpo)) { // 如果hive预处理输出其它文件目录已经存在则删除
 			HadoopUtil.delete(fileSystem, hpo, true);
 		}
 		
-		String outputCompress = configuration.get("file.output.compress", "bzip2");
+		String outputCompress = configuration.get(ConfigConstants.FILE_OUTPUT_COMPRESS, Constants.BZIP2);
 
-		if("bzip2".equals(outputCompress)) {
+		if(Constants.BZIP2.equals(outputCompress)) {
 			FileOutputFormat.setOutputCompressorClass(job, BZip2Codec.class); // Bzip2			
-		} else if("gzip".equals(outputCompress)) {
+		} else if(Constants.GZIP.equals(outputCompress)) {
 			FileOutputFormat.setOutputCompressorClass(job, GzipCodec.class); // Gzip			
 		}
 		
@@ -108,22 +140,31 @@ public class ImportDBToHive extends HadoopTool {
 
 		private MultipleOutputs<NullWritable, Text> multipleOutputs;
 		DataDrivenDBInputSplit_Develop dbSplit;
-		String outputPath;
+		JedisOperation jedisOperation = null;
+		
 		String importDB;
 		String importTable;
-		String outputformatDir;
 
 		// ----------------------------------------------
 		
 		Map<String, HiveDataSet> hiveDataSetMap; // 每个数据切片的数据输出点(1~N)
 
 		Map<String, String> outputLocation = new HashMap<String, String>(); // 数据输出的所有路径
-		
 		Map<String, List<String>> hiveTabFileds = new HashMap<String, List<String>>(); // Hive表字段与数据库表字段的对应关系(数据库表字段集合)
+		Map<String, Boolean> isAppend = new HashMap<String,Boolean>(); // 是否增量同步数据
 
 		@Override
 		protected void setup(Context context) throws IOException, InterruptedException {
 			Configuration configuration = context.getConfiguration();
+			
+			String jobLocationDay = Constants.UNDERLINE + configuration.get(ConfigConstants.DATA_LOCATION_DATE);
+
+			try {
+				jedisOperation = JedisOperation.getInstance(configuration.get(
+						ConfigConstants.REDIS_HOST), configuration.getInt(ConfigConstants.REDIS_PORT, 6480), configuration.get(ConfigConstants.REDIS_PASSWORD));
+			} catch(Exception e) {
+				throw new RuntimeException(e);
+			}
 
 			multipleOutputs = new MultipleOutputs<NullWritable, Text>(context); // 多文件路径数据输出组件
 			dbSplit = (DataDrivenDBInputSplit_Develop) context.getInputSplit();
@@ -132,8 +173,6 @@ public class ImportDBToHive extends HadoopTool {
 			importTable = dbSplit.getTable();
 			hiveDataSetMap = dbSplit.getHiveDataSetMap();
 
-			outputPath = importTable + "/" + importTable;
-			
 			// -----------------------------------------------------
 			
 			for(String cfg : hiveDataSetMap.keySet()) {
@@ -153,7 +192,7 @@ public class ImportDBToHive extends HadoopTool {
 				if(StringUtils.isNotBlank(configuration.get(cfg + ConfigConstants.LOCATION_HDFS))) { // 如果数据输出的路径是HDFS
 					hiveLocation = configuration.get(cfg + ConfigConstants.LOCATION_HDFS);
 				}
-				exportLocation.append(hiveLocation + Constants.PATH); // 拼接数据输出-Location
+				exportLocation.append(hiveLocation + jobLocationDay + Constants.PATH); // 拼接数据输出-Location
 				
 				/**
 				 * 收集数据输出到的Hive-DB
@@ -174,7 +213,10 @@ public class ImportDBToHive extends HadoopTool {
 				/**
 				 * 提取Hive表列名
 				 */
-				String hvieTabColumns = JedisOperation.getForMap(ConfigConstants.HIVE_TAB_SCHEAM, hiveDB + Constants.SPECIALCOMMA + hiveTable);
+				if(jedisOperation == null)
+					throw RedisException.JEDISOPERATION_NULL_EXCEPTION;
+				
+				String hvieTabColumns = jedisOperation.getForMap(ConfigConstants.HIVE_TAB_SCHEAM, hiveDB + Constants.SPECIALCOMMA + hiveTable);
 				
 				if(StringUtils.isNotBlank(hvieTabColumns)) {
 					JSONArray jsonArray = JSONArray.fromObject(hvieTabColumns);
@@ -204,7 +246,9 @@ public class ImportDBToHive extends HadoopTool {
 					exportLocation.append(partCol + Constants.PATH); // 拼接数据输出-分区字段
 				}
 				
-				exportLocation.append(hiveTable); // 文件后缀
+				isAppend.put(cfg, Constants.IMPORT_APPEND.equals(hiveDataSet.getAppend()) ? true : false); // 是否增量导入数据
+				
+				exportLocation.append(hiveTable); // 文件名后缀
 				
 				outputLocation.put(cfg, exportLocation.toString()); // 将完整的数据输出Location加入集合
 			}
@@ -255,6 +299,85 @@ public class ImportDBToHive extends HadoopTool {
 		protected void cleanup(Context context) throws IOException, InterruptedException {
 			if (multipleOutputs != null) {
 				multipleOutputs.close();
+			}
+			
+			/**
+			 * 每个map-task结束的时候，获取redis中整张表的切片(task)数量并减1，这里要用到分布式锁
+			 * 如果当前减1操作完成后，此表对应的切片(task)数量为0了，说明此张表所有的导入数据map-task都处理完成了，可以将数据移动到Hive表目录了
+			 * 移动数据时，要判断是全量还是增量；移动成功后并将任务记录目录加上_SUCCESS的后缀，表示此表已经处理成功
+			 * 		此操作的目的是：防止任务在不允许的范围内(每天一次)多次重复运行以及Application失败后重新启动全部Task，可能之前已经有不少成功导入的表了，没必要再重新跑
+			 */
+			if(jedisOperation == null)
+				throw RedisException.JEDISOPERATION_NULL_EXCEPTION;
+			
+			Configuration configuration = context.getConfiguration();
+
+			String tableSplitCount = jedisOperation.getForMap(ConfigConstants.HIVE_SPLIT_COUNT, importDB + Constants.SPECIALCOMMA + importTable + configuration.get(ConfigConstants.DATA_LOCATION_DATE));
+			
+			if(StringUtils.isBlank(tableSplitCount)) {
+				throw TaskRunningException.NO_REDIS_SPLIT_COUNT_EXCEPTION;
+			}
+			
+			int tableSplitCountInt = Integer.valueOf(tableSplitCount).intValue();
+			
+			if(--tableSplitCountInt <= 0) {
+			
+				try {
+					FileSystem fileSystem = FileSystem.get(configuration);
+					
+					String jobLocationDay = Constants.UNDERLINE + configuration.get(ConfigConstants.DATA_LOCATION_DATE);
+					
+					/**
+					 * 处理同步完成的数据移动到Hive表
+					 */
+					for (String cfg : outputLocation.keySet()) {
+						Path sourceTabLocation = new Path(outputLocation.get(cfg)).getParent(); // 将这个下面的所有数据移动到Hive表
+						Path targetTabLocation = new Path(new Path(outputLocation.get(cfg)).getParent().toString().replaceAll(jobLocationDay, ""));
+	
+						Set<Path> sourceTabLocationSet = new HashSet<Path>();
+						sourceTabLocationSet.add(sourceTabLocation);
+	
+						if (isAppend.get(cfg)) { // 增量拷贝
+							/**
+							 * 直接移动
+							 */
+							HadoopUtil.mvAlsoMerge(fileSystem, sourceTabLocationSet, targetTabLocation, true); // 移动数据
+						} else { // 全量覆盖
+							/**
+							 * 先删除，再移动
+							 */
+							Path targetDBLocation = targetTabLocation.getParent();
+							HadoopUtil.delete(fileSystem, targetTabLocation, true); // 目标目录直接删除
+							HadoopUtil.mv(fileSystem, sourceTabLocation, targetDBLocation); // 移动整张表数据
+						}
+	
+						/**
+						 * 标记此表的数据已经处理成功
+						 */
+						String mr_data_process_plan = configuration.get(ConfigConstants.MR_DATA_PROCESS_PLAN); // 任务运行的进度记录目录		
+						String job_name_unique = configuration.get(ConfigConstants.JOB_NAME_UNIQUE); // 任务运行的唯一名称
+	
+						String checkPath = mr_data_process_plan + 
+											Constants.PATH + 
+											job_name_unique + 
+											Constants.UNDERLINE + 
+											configuration.get(ConfigConstants.DATA_LOCATION_DATE) + 
+											Constants.PATH + 
+											importTable + 
+											Constants.JOB_DATA_SUCCESS;
+	
+						if (!HadoopUtil.fileExists(fileSystem, new Path(checkPath))) {
+							HadoopUtil.mkdir(fileSystem, new Path(checkPath));
+						}
+					}
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				} finally {
+					/**
+					 * 任务完成或任务失败，将Redis中的Key删除
+					 */
+					jedisOperation.removeValueInHash(ConfigConstants.HIVE_SPLIT_COUNT, importDB + Constants.SPECIALCOMMA + importTable + configuration.get(ConfigConstants.DATA_LOCATION_DATE));
+				}
 			}
 		}
 	}

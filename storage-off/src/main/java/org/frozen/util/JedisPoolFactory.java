@@ -20,31 +20,16 @@ public class JedisPoolFactory{
 
     private static JedisPool jedis = null;
 
-    public static synchronized  JedisPool getInstance() throws Exception {
-
-        if(jedis == null){
-            jedis = getObject();
+    public static JedisPool getInstance(String redis_host, Integer redis_port, String redis_password) throws Exception {
+        if(jedis == null) {
+        	synchronized (jedis) {
+        		if(jedis == null) {
+        			System.out.println(redis_host + "-" + redis_port + "-" + timeout + "-" + redis_password);
+        			jedis = new JedisPool(buildDefaultPoolConfig(), redis_host, redis_port, timeout, redis_password);
+        		}
+			}
         }
         return jedis;
-    }
-
-    private static JedisPool getObject() throws Exception {
-
-//        if (StringUtils.isBlank(Constants.REDIS_HOST)) {
-//            throw new IllegalArgumentException("host should not be empty");
-//        }
-    	
-    	/**
-    	 * 生产
-    	 */
-        System.out.println(Constants.REDIS_HOST + "-" + Constants.REDIS_PORT + "-" + timeout + "-" + Constants.PASSWORD);
-        return new JedisPool(buildDefaultPoolConfig(), Constants.REDIS_HOST, Constants.REDIS_PORT, timeout, Constants.PASSWORD);
-
-        /**
-         * 测试
-         */
-//        System.out.println(Constants.REDIS_HOST + "-" + Constants.REDIS_PORT + "-" + timeout);
-//        return new JedisPool(buildDefaultPoolConfig(), Constants.REDIS_HOST, Constants.REDIS_PORT, timeout);
     }
 
     private static GenericObjectPoolConfig buildDefaultPoolConfig() {

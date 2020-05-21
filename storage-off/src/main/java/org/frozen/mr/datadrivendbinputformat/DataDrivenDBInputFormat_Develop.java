@@ -15,12 +15,15 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -32,12 +35,13 @@ import org.apache.hadoop.mapreduce.lib.db.DBInputFormat;
 import org.apache.hadoop.mapreduce.lib.db.DBWritable;
 import org.frozen.bean.importDBBean.ImportRDB_XMLDataSet;
 import org.frozen.bean.importDBBean.ImportRDB_XMLDataSetDB;
-import org.frozen.bean.loadHiveBean.HiveDataBase;
 import org.frozen.bean.loadHiveBean.HiveDataSet;
-import org.frozen.bean.loadHiveBean.HiveMetastore;
 import org.frozen.constant.ConfigConstants;
 import org.frozen.constant.Constants;
 import org.frozen.exception.ImportDBToHiveException;
+import org.frozen.exception.RedisException;
+import org.frozen.util.DateUtils;
+import org.frozen.util.HadoopUtil;
 import org.frozen.util.JedisOperation;
 import org.frozen.util.XmlUtil;
 
@@ -194,17 +198,23 @@ public class DataDrivenDBInputFormat_Develop<T extends DBWritable> extends DBInp
 		}
 	}
 
-	/** {@inheritDoc} */
+	@Override
 	public List<InputSplit> getSplits(JobContext job) throws IOException {
 		Configuration configuration = job.getConfiguration();
+		
+		FileSystem fileSystem = FileSystem.get(configuration); // 创建文件系统
+		
 
-//		int targetNumTasks = job.getConfiguration().getInt("mapred.map.tasks", 1);
-//	    if (1 == targetNumTasks) {
-//	      List<InputSplit> singletonSplit = new ArrayList<InputSplit>();
-//	      singletonSplit.add(new DataDrivenDBInputSplit("1=1", "1=1"));
-//	      return singletonSplit;
-//	    }
-
+		JedisOperation jedisOperation = null;
+		try {
+			retrieveJobDir(configuration, fileSystem);
+			
+			jedisOperation = JedisOperation.getInstance(configuration.get(
+					ConfigConstants.REDIS_HOST), configuration.getInt(ConfigConstants.REDIS_PORT, 6480), configuration.get(ConfigConstants.REDIS_PASSWORD));
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+		
 		// -----------------------------------------------
 		
 		String tConfig = configuration.get(ConfigConstants.LOAD_HIVE_CONFIG); // 数据输出配置项
@@ -222,6 +232,24 @@ public class DataDrivenDBInputFormat_Develop<T extends DBWritable> extends DBInp
 			
 			if(StringUtils.isBlank(location_hive_config))
 				throw ImportDBToHiveException.NO_HIVE_TAB_CONFIG_EXCEPTION;
+			
+			try {
+				/**
+				 * 删除-昨天任务运行生成的临时目录
+				 */
+				Path oldPath = new Path(
+						configuration.get(cfg + ConfigConstants.LOCATION_HDFS) == null ?
+						configuration.get(cfg + ConfigConstants.HIVE_LOCATION) : configuration.get(cfg + ConfigConstants.LOCATION_HDFS));
+				
+				Set<Path> subdirectory = HadoopUtil.dirSubdirectory(fileSystem, oldPath.getParent());
+				for(Path path : subdirectory) {
+					if(path.toString().contains(DateUtils.getYesterdayDateFormat(ConfigConstants.JOB_EXECUTE_MULTIPLE_FORMAT))) {
+						HadoopUtil.delete(fileSystem, path, true); // 删除昨天的目录
+					}
+				}
+			} catch(Exception e) {
+				throw new RuntimeException(e);
+			}
 
 			/**
 			 *  加载输出到Hive表-XML配置文件
@@ -268,18 +296,26 @@ public class DataDrivenDBInputFormat_Develop<T extends DBWritable> extends DBInp
 				String splitCol = dataSet.getUniqueKey(); // 主键
 				String conditions = dataSet.getConditions();
 				
+				String tableName_low = tableName.toLowerCase();
+
+				try {
+					if (checkJobComplete(configuration, fileSystem, tableName_low)) { // 检查Job的运行状态，如果返回true，说明此表已经导入过，不需要构建切片
+						continue;
+					} 
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+
 				if(!isOpenConnection) {
 					conditions = "";
 				}
 				
-				if(isFullDoseDay && fullDoseDay.equals(new SimpleDateFormat("dd").format(new Date()))) { // 每月几号强制拉取全量数据
+				if(isFullDoseDay && fullDoseDay.equals(new SimpleDateFormat(Constants.DATE_DAY).format(new Date()))) { // 每月几号强制拉取全量数据
 					conditions = "";
 				}
 				
 				String fields = dataSet.getFields(); // 数据切片查询字段，默认 *
-							
-				String tableName_low = tableName.toLowerCase();
-				
+
 				Map<String, HiveDataSet> hiveDataSetMap = new HashMap<String, HiveDataSet>();
 				
 				for(String cfg : tConfigs) {
@@ -297,7 +333,7 @@ public class DataDrivenDBInputFormat_Develop<T extends DBWritable> extends DBInp
 				 *  	如果省去在构建切片时的条件过滤，那将会创建30个切片,虽然切片数增加了，任务数据也增加了，但在实际任务处理时不会对数据有影响，因为实际任务处理数据也会有条件过滤
 				 */
 				String spliterConditions = null;
-				if(configuration.getBoolean("create.spliter.isCondition", true)) {
+				if(configuration.getBoolean(ConfigConstants.CREATE_SPLITER_ISCONDITION, true)) {
 					spliterConditions = conditions;					
 				}
 				
@@ -317,7 +353,19 @@ public class DataDrivenDBInputFormat_Develop<T extends DBWritable> extends DBInp
 				configuration.set(Constants.SPLITTERCONDITIONS, conditions); // 数据切片查询条件
 				configuration.set(Constants.SPLITTERFIELDS, fields); // 数据切片查询字段，默认 *
 
-				splits.addAll(splitter.split(configuration, results, splitCol, hiveDataSetMap));
+				List<InputSplit> inputSplit = splitter.split(configuration, results, splitCol, hiveDataSetMap);
+
+				/**
+				 * 向redis中写入每张表的切片(task)数量，如果此表的切片(task)数量是0，则不写入
+				 */
+				if(inputSplit.size() > 0) {
+					if(jedisOperation == null)
+						throw RedisException.JEDISOPERATION_NULL_EXCEPTION;
+					
+					jedisOperation.putForMap(ConfigConstants.HIVE_SPLIT_COUNT, db + Constants.SPECIALCOMMA + tableName_low + configuration.get(ConfigConstants.DATA_LOCATION_DATE), String.valueOf(inputSplit.size()), -1);					
+				}
+				
+				splits.addAll(inputSplit); // 将构建好的切片加入队列
 			}
 
 			return splits;
@@ -348,6 +396,65 @@ public class DataDrivenDBInputFormat_Develop<T extends DBWritable> extends DBInp
 				LOG.debug("SQLException committing split transaction: " + se.toString());
 			}
 		}
+	}
+
+	/**
+	 * 检索是否有配置范围内的任务目录
+	 * 	如果有说明可能已经有任务运行了一半失败了
+	 * 	检索工作目录，加载后缀是_SUCCESS的目录，并将这些表不参与切片的构建
+	 * 	因为这些数据已经处理成功了，实现任务的断流
+	 * 
+	 * @param tableName 
+	 * @param configuration 
+	 */
+	private boolean checkJobComplete(Configuration configuration, FileSystem fileSystem, String tableName) throws Exception {
+		
+		String mr_data_process_plan = configuration.get(ConfigConstants.MR_DATA_PROCESS_PLAN); // 任务运行的进度记录目录	
+		
+		String job_name_unique = configuration.get(ConfigConstants.JOB_NAME_UNIQUE); // 任务运行的唯一名称
+
+		String checkPath = mr_data_process_plan + 
+							Constants.PATH + 
+							job_name_unique + 
+							Constants.UNDERLINE + 
+							configuration.get(ConfigConstants.DATA_LOCATION_DATE) +
+							Constants.PATH +
+							tableName +
+							Constants.JOB_DATA_SUCCESS;
+		
+		if(HadoopUtil.fileExists(fileSystem, new Path(checkPath))) { // 此表的任务在  job.execute.allday.multiple  配置项范围内已经运行完成
+			return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * 检查记录任务运行的文件目录，删除昨天的
+	 * 生成任务运行的号码保证在配置范围内不重复运行
+	 * 
+	 * @param configuration
+	 * @throws Exception
+	 */
+	private void retrieveJobDir(Configuration configuration, FileSystem fileSystem) throws Exception {
+		
+		String mr_data_process_plan = configuration.get(ConfigConstants.MR_DATA_PROCESS_PLAN); // 任务运行的进度记录目录
+
+		String job_execute_multiple_format = configuration.get(ConfigConstants.JOB_EXECUTE_MULTIPLE_FORMAT); // 配置范围
+
+		/**
+		 * 删除-昨天任务运行进度记录目录
+		 */
+		Set<Path> subdirectory = HadoopUtil.dirSubdirectory(fileSystem, new Path(mr_data_process_plan));
+		for(Path path : subdirectory) {
+			if(path.toString().contains(DateUtils.getYesterdayDateFormat(job_execute_multiple_format))) {
+				HadoopUtil.delete(fileSystem, path, true); // 删除昨天的目录
+			}
+		}
+
+		/**
+		 * 在配置范围内可以运行一次
+		 */
+		configuration.set(ConfigConstants.DATA_LOCATION_DATE, DateUtils.getDateFormat(job_execute_multiple_format, new Date()));
 	}
 
 	/**

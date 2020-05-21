@@ -12,16 +12,18 @@ public class HiveDataSet {
 	protected String ennameM; // mysql-英文名称
 	protected String ennameH; // hive-英文名称
 	protected String chname; // 中文名称
+	protected String append; // 是否增量
 	protected String description; // 描述信息
 	private List<HiveField> hiveFieldList; // Hive表需要映射的字段
 
 	public HiveDataSet() {
 	}
 
-	public HiveDataSet(String ennameM, String ennameH, String chname, String description, List<HiveField> hiveFieldList) {
+	public HiveDataSet(String ennameM, String ennameH, String chname, String append, String description, List<HiveField> hiveFieldList) {
 		this.ennameM = ennameM;
 		this.ennameH = ennameH;
 		this.chname = chname;
+		this.append = append;
 		this.description = description;
 		this.hiveFieldList = hiveFieldList;
 	}
@@ -50,6 +52,14 @@ public class HiveDataSet {
 		this.chname = chname;
 	}
 
+	public String getAppend() {
+		return append;
+	}
+
+	public void setAppend(String append) {
+		this.append = append;
+	}
+
 	public String getDescription() {
 		return description;
 	}
@@ -68,7 +78,7 @@ public class HiveDataSet {
 	
 	@Override
 	public String toString() {
-		return "<DataSet ENNameM=\"" + ennameM + "\" ENNameH=\"" + ennameH + "\" CHName=\"" + chname + "\" Description=\"" + description + "\"></DataSet>";
+		return "<DataSet ENNameM=\"" + ennameM + "\" ENNameH=\"" + ennameH + "\" CHName=\"" + chname + "\" Append=\"" + append + "\"  Description=\"" + description + "\"></DataSet>";
 	}
 	
 	/**
@@ -79,6 +89,7 @@ public class HiveDataSet {
 		price.addAttribute("ENNameM", ennameM);
 		price.addAttribute("ENNameH", ennameH);
 		price.addAttribute("CHName", chname);
+		price.addAttribute("Append", append);
 		price.addAttribute("Description", description);
 	
 		return price;

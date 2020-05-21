@@ -4,31 +4,23 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- *   演示了通过java jdbc 操作hive  ，一般企业环境不会这么做 ，hive 目的是去java 编程能力
- *   京东等企业是通过shell or python  封装 hive -e sql 命令进行数据操作
- *   需要在hive 节点启动 hive --service hiveserver2&
- **/
+import org.frozen.exception.JDBCException;
 
 public class HiveUtil {
+	
+	private static volatile HiveUtil hiveUtil;
 
-    private static Connection conn = null;
-    private static Statement statement = null;
+    public HiveUtil() {}
 
-    static {
-        String driver = "org.apache.hive.jdbc.HiveDriver";
-        String url = "jdbc:hive2://linux01:10000/default";
-        String user = "hadoop"; //一般情况下可以使用匿名的方式，在这里使用了root是因为整个Hive的所有安装等操作都是root
-        String password = "";
-
-
-        try {
-            Class.forName(driver); // 加载JDBC驱动
-            conn = DriverManager.getConnection(url, user, password); // 通过JDBC建立和Hive的连接器，默认端口是10000，默认用户名和密码都为空
-            statement = conn.createStatement(); // 创建Statement句柄，基于该句柄进行SQL的各种操作
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
+	public static HiveUtil getInstance() throws Exception {
+    	if(hiveUtil == null) {
+    		synchronized (HiveUtil.class) {
+    			if(hiveUtil == null) {
+    				hiveUtil = new HiveUtil();
+    			}
+			}
+    	}
+    	return hiveUtil;
     }
 
     /**
@@ -37,8 +29,12 @@ public class HiveUtil {
      * @return
      * @throws Exception
      */
-    private static PreparedStatement getPreparedStatement(String sql) throws Exception {
-        return conn.prepareStatement(sql);
+    public PreparedStatement executeSQL(Connection connection, String sql) throws Exception {
+    	
+    	if(connection == null)
+    		throw JDBCException.NO_CONNECTION_EXCEPTION;
+    	
+        return connection.prepareStatement(sql);
     }
 
     /**
@@ -47,10 +43,13 @@ public class HiveUtil {
      * @return
      * @throws Exception
      */
-    public static List<String> getSchema(String hive_db, String table) throws Exception {
+    public List<String> getSchema(Connection connection, String hive_db, String table) throws Exception {
+    	if(connection == null)
+    		throw JDBCException.NO_CONNECTION_EXCEPTION;
+    	
         String sql = "describe " + hive_db + "." + table;
 
-        ResultSet resultSet = statement.executeQuery(sql);
+        ResultSet resultSet = connection.createStatement().executeQuery(sql);
 
         List<String> schemaList = new ArrayList<String>();
         while (resultSet.next()) {
@@ -65,30 +64,28 @@ public class HiveUtil {
      * @param type
      * @return
      */
-    public static boolean addColumn(String hive_db, String tableName, String column, String type) {
-       String sql = "alter table " + hive_db + "." + tableName + " add columns(" + column + " " + type + ")";
+	public boolean addColumn(Connection connection, String hive_db, String tableName, String column, String type) {
+		if (connection == null)
+			throw JDBCException.NO_CONNECTION_EXCEPTION;
 
-       try {
-           statement.execute(sql);
-           return true;
-       } catch(Exception e) {
-           e.printStackTrace();
-           return false;
-       }
+		String sql = "alter table " + hive_db + "." + tableName + " add columns(" + column + " " + type + ")";
+
+		try {
+			connection.createStatement().execute(sql);
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+    
+    /**
+     * 获取链接
+     * @return
+     * @throws Exception
+     */
+    public Connection createOrGetConnection(String driver, String url, String user, String password) throws Exception {
+    	Class.forName(driver); // 加载JDBC驱动
+    	return DriverManager.getConnection(url, user, password); // 通过JDBC建立和Hive的连接器，默认端口是10000，默认用户名和密码都为空
     }
-
-    public static void main(String[] args) {
-        try {
-            boolean result = HiveUtil.addColumn("default", "people", "describable", "string");
-            System.out.println("添加列：" + result);
-
-            List<String> schemaList = HiveUtil.getSchema("default", "people");
-            for(String column : schemaList) {
-                System.out.println(column);
-            }
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
-    }
-
 }

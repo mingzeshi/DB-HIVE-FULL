@@ -37,6 +37,7 @@ public interface Constants {
     String KEY_VALUE_JOIN = "#=#=#";
     String PATH = "/";
     String SELECT_ALL = "*";
+    String UNDERLINE = "_";
 
     // 目录名称
     String MERGE_DATA = "UPDATE";
@@ -59,6 +60,7 @@ public interface Constants {
     String PART_LOG_DAY_TIMESTAMP_FORMAT = "yyyy-MM-dd"; // 默认的分区字段时间格式
     
     String HIVE_DATA_PROCESS = "_process"; // hvie数据预处理完成输出目录后缀
+    String JOB_DATA_SUCCESS = "_success";
     
     // Bean-package路径
     String BEAN_QUALIFIELD = "org.frozen.bean.";
@@ -75,18 +77,19 @@ public interface Constants {
     String COLUMNTYPE = "CT";
     String DATA = "DA";
 
-    // 测试 redis
-//    String REDIS_HOST = "10.103.27.19"; 
-//    String PASSWORD = "redis123456";
-
-    // 生产redis 相关配置
-    String REDIS_HOST = "ops02.prod.data.phd2.jianlc.jlc";
-    String PASSWORD = "ybeWHKRRf1U9";
-
-    Integer REDIS_PORT = 6480; // 端口
     Integer MAX_ATTEMPTS = 10; //最多尝试次数
     Integer EXPIRE_SECONDS = 3 * 24 * 60 * 60; //过期时间
     
     // 分区表标识 P
     String PART_MARK = "P";
+    
+    String IMPORT_APPEND_DEFAULT = "false";
+    String IMPORT_APPEND = "true";
+    
+    
+    String DATE_DAY = "dd";
+    
+    String BZIP2 = "bzip2";
+    String GZIP = "gzip";
+    
 }

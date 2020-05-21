@@ -19,6 +19,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.util.GenericOptionsParser;
 import org.apache.hadoop.util.Tool;
+import org.frozen.constant.ConfigConstants;
 import org.frozen.exception.BaseException;
 import org.frozen.exception.BuildDriverCommonException;
 import org.frozen.exception.ImportDBToHiveException;
@@ -47,27 +48,12 @@ public abstract class HadoopTool extends Configured implements Tool {
             GenericOptionsParser parser = new GenericOptionsParser(configuration, args);
             String[] toolArgs = parser.getRemainingArgs();
 
-            String configFilePath = configuration.get("configFile");
-            String tempConfig = configuration.get("tempConfig");
-            
-//            configuration.addResource("Common.xml");
-            
-            if(StringUtils.isNotBlank(tempConfig)) { // 用于测试
-            	configuration.addResource(new Path(tempConfig));
-            }
-
-            if(StringUtils.isNotBlank(configFilePath)) {
-            	configuration.addResource(new Path(configFilePath));
-            } else {
-            	throw BuildDriverCommonException.NO_CONFIG_FILE_EXCEPTION;
-            }
-
             String val;
-            if (configuration.get(JOB_NAME) == null && configuration.get("job.name.db") == null) {
+            if (configuration.get(JOB_NAME) == null && configuration.get(ConfigConstants.JOB_NAME_UNIQUE) == null) {
                 val = toolId + "_" + DateUtils.formatNumber(new Date());
                 configuration.set(JOB_NAME, val);
-            } else if(configuration.get("job.name.db") != null) {
-            	val = toolId + "_" + DateUtils.formatNumber(new Date()) + "_" + configuration.get("job.name.db");
+            } else if(configuration.get(ConfigConstants.JOB_NAME_UNIQUE) != null) {
+            	val = toolId + "_" + DateUtils.formatNumber(new Date()) + "_" + configuration.get(ConfigConstants.JOB_NAME_UNIQUE);
        			configuration.set(JOB_NAME, val);
             }
 

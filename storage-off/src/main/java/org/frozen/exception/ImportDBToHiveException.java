@@ -14,4 +14,5 @@ public class ImportDBToHiveException  extends BaseException  {
 	
 	public static final ImportDBToHiveException NO_EXPORT_CONFIG_EXCEPTION = new ImportDBToHiveException("20001", "无数据输出-配置项");
 	public static final ImportDBToHiveException NO_HIVE_TAB_CONFIG_EXCEPTION = new ImportDBToHiveException("20002", "无数据据输出-HIVE表配置项");
+	public static final ImportDBToHiveException NO_TAB_IMPORT_EXCEPTION = new ImportDBToHiveException("20003", "今日数据导入任务已经完成，请不要重复导入数据以及启动任务");
 }

@@ -6,12 +6,7 @@
         <name>import.db.config.path</name>
         <value>/server/app/mr/product/ImportConfig.xml</value>
     </property>
-    
-    <property>
-        <name>import.db.blacklist.path</name>
-        <value>/server/app/mr/product/blackList.txt</value>
-    </property>
-	
+
 	<!-- 数据输出配置项 -->
 	<property>
         <name>load.hive.config</name>
@@ -51,10 +46,16 @@
         <value>yyyy-MM-dd</value>
     </property>
 
-    <!-- 数据处理中的临时文件 -->
+    <!-- 数据处理中的临时文件目录 -->
     <property>
         <name>mr.data.process.other</name>
         <value>/hive_process/other_one/product/</value>
+    </property>
+    
+    <!-- 数据处理中的进度文件目录 -->
+    <property>
+        <name>mr.data.process.plan</name>
+        <value>/hive_process/plan/product/</value>
     </property>
 
     <!-- 导入数据时是否启用查询条件 默认true -->
@@ -75,12 +76,6 @@
         <value>3000000</value>
     </property>
 
-	<!-- 非分区表数据输出的临时目录后缀 -->
-	<property>
-		<name>export.ods.bak.dir</name>
-		<value>_export</value>
-	</property>
-	
 	<!-- 是否开启忽略查询条件 全量导入数据 默认是false -->
 	<property>
 		<name>is.conditions.full.dose.day</name>
@@ -94,17 +89,69 @@
 
 	<!-- mapreduce任务名的后缀 -->
 	<property>
-		<name>job.name.db</name>
-		<value>jlc_ods</value>
+		<name>job.name.unique</name>
+		<value>product</value>
 	</property>
+	
+	<!-- 任务在配置时间范围内只可单次运行 -->
+	<property>
+		<name>job.execute.multiple.format</name>
+		<value>yyyyMMdd</value>
+	</property>
+	
+	<!-- 数据导入表的黑名单 -->
+	<property>
+        <name>import.db.blacklist.path</name>
+        <value>/server/app/mr/product/blackList.txt</value>
+    </property>
+    
+    <!-- 数据导入表的黑名单过滤字符串 -->
+    <property>
+        <name>import.db.blacklist.filter</name>
+        <value>bak</value>
+    </property>
 
 	<!-- 数据压缩 -->
 	<property>
 		<name>file.output.compress</name>
 		<value>none</value>
 	</property>
-
-	<!-- ======mapreduce配置项====== -->
+	
+	<!-- HiveServer2 Driver -->
+	<property>
+		<name>hive.connection.driver</name>
+		<value>org.apache.hive.jdbc.HiveDriver</value>
+	</property>
+	<!-- HiveServer2 URL -->
+	<property>
+		<name>hive.connection.url</name>
+		<value>jdbc:hive2://dservice06.prod.data.phd2.jianlc.jlc:10000;ssl=true;sslTrustStore=/var/run/cloudera-scm-agent/process/2179-hue-HUE_SERVER/cm-auto-global_truststore.jks;trustStorePassword=R2j5DkgDZVvjTziNMNjuyvSB9pVBeFzRkKCmU4LfBuN/</value>
+	</property>
+	<!-- HiveServer2 UserName -->
+	<property>
+		<name>hive.connection.username</name>
+		<value></value>
+	</property>
+	<!-- HiveServer2 PassWord -->
+	<property>
+		<name>hive.connection.password</name>
+		<value></value>
+	</property>
+	
+	<property>
+		<name>redis.host</name>
+		<value></value>
+	</property>
+	<property>
+		<name>redis.port</name>
+		<value></value>
+	</property>
+	<property>
+		<name>redis.password</name>
+		<value></value>
+	</property>
+	
+	<!-- ======MapReduce配置项====== -->
 	<property>
         <name>mapreduce.job.queuename</name>
         <value>xstorm</value>
@@ -138,5 +185,11 @@
         <name>mapreduce.job.running.reduce.limit</name>
         <value>300</value>
     </property> 
+    
+    <!-- ======Hive配置项====== -->
+    <property>
+	    <name>hive.metastore.uris</name>
+	    <value>thrift://dservice02.prod.data.phd2.jianlc.jlc:9083,thrift://dservice06.prod.data.phd2.jianlc.jlc:9083</value>
+	</property>
 
 </configuration>

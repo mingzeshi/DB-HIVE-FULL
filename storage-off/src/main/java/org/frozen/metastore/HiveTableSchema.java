@@ -3,67 +3,71 @@ package org.frozen.metastore;
 import java.sql.Connection;
 import java.util.List;
 
+import org.apache.hadoop.conf.Configuration;
 import org.frozen.bean.loadHiveBean.HiveDataBase;
 import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.bean.loadHiveBean.HiveMetastore;
 import org.frozen.constant.ConfigConstants;
 import org.frozen.constant.Constants;
+import org.frozen.exception.RedisException;
+import org.frozen.hive.HiveMetastoreUtil;
 import org.frozen.util.JDBCUtil;
 import org.frozen.util.JedisOperation;
 import org.frozen.util.XmlUtil;
+import org.frozen.vo.Tuple;
 
 import net.sf.json.JSONArray;
 
 
-public class HiveTableSchema {
+public class HiveTableSchema implements Runnable {
 
-	public static void main(String[] args) {
-//		args = new String[] {
-//				"C:/Users/Administrator/Desktop/文件/20190821/stock_market/LoadToHiveStorage.xml",
-//				"C:/Users/Administrator/Desktop/文件/20190821/stock_market/LoadToHiveODS.xml"
-//		};
-		
-		System.out.println("------START------");
-		
-		HiveMetastore dwhiveMetastore = XmlUtil.parserLoadToHiveXML(args[0], null); // 获取配置文件数据库相关信息
-		
-		Connection connection = JDBCUtil.getConn(dwhiveMetastore.getDriver(), dwhiveMetastore.getUrl(), dwhiveMetastore.getUsername(), dwhiveMetastore.getPassword());
-		
-		List<HiveDataBase> zkdataBaseList = dwhiveMetastore.getHiveDataBaseList();
-		
-		for(HiveDataBase<HiveDataSet> dataBase : zkdataBaseList) {
-			String dbName = dataBase.getEnnameH();
-			JedisOperation.putForMap(ConfigConstants.HIVE_DB_LOCATION, dbName, JDBCUtil.getHiveDBLocation(connection, dbName), -1);
-			
-			List<HiveDataSet> zkDataSetList = dataBase.getHiveDataSetList();
-			
-			for(HiveDataSet zkDataSet : zkDataSetList) {
-				
-				JedisOperation.putForMap(ConfigConstants.HIVE_TAB_SCHEAM, dbName + Constants.SPECIALCOMMA + zkDataSet.getEnnameH().toLowerCase(), JSONArray.fromObject(JDBCUtil.getHiveTabColumns(connection, dataBase.getEnnameH().toLowerCase(), zkDataSet.getEnnameH().toLowerCase())).toString(), -1);
-			}
-		}
-		
-		// ----------------------------------------------------------------------------------------------------
-		
-		HiveMetastore odshiveMetastore = XmlUtil.parserLoadToHiveXML(args[1], null); // 获取配置文件数据库相关信息
-		
-//		Connection odsconnection = JDBCUtil.getConn(odshiveMetastore.getDriver(), odshiveMetastore.getUrl(), odshiveMetastore.getUsername(), odshiveMetastore.getPassword());
-		
-		List<HiveDataBase> odsdataBaseList = odshiveMetastore.getHiveDataBaseList();
-		
-		for(HiveDataBase<HiveDataSet> dataBase : odsdataBaseList) {
-			String dbName = dataBase.getEnnameH();
-			JedisOperation.putForMap(ConfigConstants.HIVE_DB_LOCATION, dbName, JDBCUtil.getHiveDBLocation(connection, dbName), -1);
-			
-			List<HiveDataSet> odsDataSetList = dataBase.getHiveDataSetList();
-			
-			for(HiveDataSet odsDataSet : odsDataSetList) {
-				
-				JedisOperation.putForMap(ConfigConstants.HIVE_TAB_SCHEAM, dbName + Constants.SPECIALCOMMA + odsDataSet.getEnnameH().toLowerCase(), JSONArray.fromObject(JDBCUtil.getHiveTabColumns(connection, dataBase.getEnnameH().toLowerCase(), odsDataSet.getEnnameH().toLowerCase())).toString(), -1);
-			}
-		}
-		
-		System.out.println("------END------");
+	public HiveTableSchema(Configuration configuration, String xmlPath) {
+		this.xmlPath = xmlPath;
+		this.configuration = configuration;
 	}
 
+	private String xmlPath;
+	private Configuration configuration;
+	
+	@Override
+	public void run() {
+		try {
+			System.out.println("------START------");
+			
+			JedisOperation jedisOperation = null;
+			try {
+				jedisOperation = JedisOperation.getInstance(configuration.get(
+						ConfigConstants.REDIS_HOST), configuration.getInt(ConfigConstants.REDIS_PORT, 6480), configuration.get(ConfigConstants.REDIS_PASSWORD));
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+			
+			HiveMetastore hiveMetastore = XmlUtil.parserLoadToHiveXML(xmlPath, null); // 获取配置文件数据库相关信息
+			
+			Tuple<String, String> metastoreURIS = new Tuple<String, String>(ConfigConstants.HIVE_METASTORE_URIS, configuration.get(ConfigConstants.HIVE_METASTORE_URIS));
+			HiveMetastoreUtil hiveMetastoreUtil = HiveMetastoreUtil.getInstance(metastoreURIS);
+			
+			List<HiveDataBase> hiveDataBaseList = hiveMetastore.getHiveDataBaseList();
+			
+			if(jedisOperation == null)
+				throw RedisException.JEDISOPERATION_NULL_EXCEPTION;
+			
+			for(HiveDataBase<HiveDataSet> dataBase : hiveDataBaseList) {
+				String dbName = dataBase.getEnnameH();
+
+				jedisOperation.putForMap(ConfigConstants.HIVE_DB_LOCATION, dbName, hiveMetastoreUtil.getDBLocation(dbName), -1);
+				
+				List<HiveDataSet> hiveDataSetList = dataBase.getHiveDataSetList();
+				
+				for(HiveDataSet hvieDataSet : hiveDataSetList) {
+					jedisOperation.putForMap(ConfigConstants.HIVE_TAB_SCHEAM, dbName + Constants.SPECIALCOMMA + hvieDataSet.getEnnameH().toLowerCase(), JSONArray.fromObject(hiveMetastoreUtil.getTabColumns(dataBase.getEnnameH().toLowerCase(), hvieDataSet.getEnnameH().toLowerCase())).toString(), -1);
+				}
+			}
+	
+			System.out.println("------END------");
+		} catch(Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
 }

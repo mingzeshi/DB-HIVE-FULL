@@ -21,6 +21,7 @@ import org.frozen.bean.importDBBean.ImportRDB_XMLDataSetDB;
 import org.frozen.bean.loadHiveBean.HiveDataBase;
 import org.frozen.bean.loadHiveBean.HiveDataSet;
 import org.frozen.bean.loadHiveBean.HiveMetastore;
+import org.frozen.constant.Constants;
 
 public class XmlUtil {
 
@@ -54,7 +55,8 @@ public class XmlUtil {
 			Document document = saxReader.read(inputXml); // 加载xml
 			Element root = document.getRootElement(); // 根节点
 		   
-			HiveMetastore hiveMetastore = parserHdfsLoadToHiveXMLGetDB(root); // 获取hive-metastore数据库mysql连接信息
+			HiveMetastore hiveMetastore = parserHdfsLoadToHiveXMLGetDB(root); // 获取Hive-metastore数据库mysql连接信息
+
 			List<HiveDataBase> dataBaseList = new ArrayList<HiveDataBase>();
 			hiveMetastore.setHiveDataBaseList(dataBaseList);
 			
@@ -77,9 +79,10 @@ public class XmlUtil {
 						String ennameM_d = dataSetElement.attribute("ENNameM").getValue();
 						String ennameH_d = dataSetElement.attribute("ENNameH").getValue();
 						String chname_d = dataSetElement.attribute("CHName").getValue();
+						String import_append_d = dataSetElement.attribute("Append").getValue();
 						String description_d = dataSetElement.attribute("Description").getValue();
 		
-						dataSetList.add(new HiveDataSet(ennameM_d, ennameH_d, chname_d, description_d, null));
+						dataSetList.add(new HiveDataSet(ennameM_d, ennameH_d, chname_d, import_append_d, description_d, null));
 					}
 				}
 			}
@@ -99,13 +102,9 @@ public class XmlUtil {
 	private static HiveMetastore parserHdfsLoadToHiveXMLGetDB(Element root) {
 		String enname = root.attribute("ENName").getValue();
 		String chname = root.attribute("CHName").getValue();
-        String driver = root.attribute("Driver").getValue();
-        String url = root.attribute("Url").getValue();
-        String username = root.attribute("UserName").getValue();
-        String password = root.attribute("PassWord").getValue();
         String description = root.attribute("Description").getValue();
         
-        return new HiveMetastore(enname, chname, driver, url, username, password, description, null);
+        return new HiveMetastore(enname, chname, description, null);
 	}
 
 	// ----------------------------------------------------------------

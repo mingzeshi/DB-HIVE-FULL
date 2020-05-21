@@ -120,6 +120,24 @@ public class HadoopUtil {
         }
         return pathList;
     }
+    
+    /**
+     * 返回指定目录下的所有一级子目录
+     * 
+     * @param fs
+     * @param path
+     * @return
+     * @throws Exception
+     */
+    public static Set<Path> dirSubdirectory(FileSystem fs, Path path) throws Exception {
+    	FileStatus[] fileStatuses = fs.listStatus(path);
+    	Set<Path> pathList = new HashSet<Path>();
+
+        for (FileStatus fileStatus : fileStatuses) {
+            pathList.add(fileStatus.getPath());
+        }
+        return pathList;
+    }
 
     /**
      * 返回目录下包含_SUCCESS文件的所有目录
@@ -248,9 +266,8 @@ public class HadoopUtil {
     /**
      * 移动目录下的文件(夹)到目标目录，文件夹名相同则合并，文件名相同则文件重命名
      */
-    public static void mvAlsoMerge(FileSystem fileSystem, Path targetPath, Set<String> pathSet) throws Exception {
-        for(String path : pathSet) {
-            Path rootPath = new Path(path);
+    public static void mvAlsoMerge(FileSystem fileSystem, Set<Path> sourcePathSet, Path targetPath, Boolean isDelSource) throws Exception {
+        for(Path rootPath : sourcePathSet) {
             FileStatus[] listFile = fileSystem.listStatus(rootPath);
             for(FileStatus fileStatus : listFile) {
                 Path originalPathChild = fileStatus.getPath();
@@ -259,10 +276,10 @@ public class HadoopUtil {
                 if (fileStatus.isDirectory()) {
                     if (fileExists(fileSystem, targetPathChild)) {
 
-                        Set<String> sucPathSet = new HashSet<String>(); // 返回所有子目录
-                        sucPathSet.add(originalPathChild.toString());
+                        Set<Path> sucPathSet = new HashSet<Path>(); // 返回所有子目录
+                        sucPathSet.add(originalPathChild);
 
-                        mvAlsoMerge(fileSystem, targetPathChild, sucPathSet);
+                        mvAlsoMerge(fileSystem, sucPathSet, targetPathChild, isDelSource);
                     } else {
                         HadoopUtil.mv(fileSystem, originalPathChild, targetPath);
                     }
@@ -279,7 +296,7 @@ public class HadoopUtil {
                 }
 
                 FileStatus[] endingListFile = fileSystem.listStatus(rootPath);
-                if (endingListFile.length == 0) { // 如果此目录下所有文件已经移动完成，则删除目录
+                if (endingListFile.length == 0 && isDelSource) { // 如果此目录下所有文件已经移动完成，则删除目录
                     delete(fileSystem, rootPath, false);
                 }
             }

@@ -84,6 +84,14 @@ public class DateUtils {
 	}
 	
 	/**
+	 * 获取日期, 自定义时间格式
+	 * @return 日期
+	 */
+	public static String getDateFormat(String format, Date date) {
+		return new SimpleDateFormat(format).format(date);
+	}
+	
+	/**
 	 * 格式化日期（yyyy-MM-dd）
 	 * @param date Date对象
 	 * @return 格式化后的日期
