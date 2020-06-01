@@ -156,6 +156,7 @@ public class TableBalance extends HadoopTool {
 						XmlUtil.writeXML(import_db_config_path, elements); // 将修改过后的XML文档写入文件中
 					} catch (Exception e) {
 						e.printStackTrace();
+						throw new RuntimeException(e);
 					}
 				}
 			});
@@ -227,6 +228,7 @@ public class TableBalance extends HadoopTool {
 						}
 					} catch (Exception e) {
 						e.printStackTrace();
+						throw new RuntimeException(e);
 					}
 				}
 			});
