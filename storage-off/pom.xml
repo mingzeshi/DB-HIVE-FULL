@@ -13,7 +13,7 @@
 		<encoding>UTF-8</encoding>
 		<hadoop.version>3.0.0</hadoop.version>
 		<java.version>1.8</java.version>
-		<mysql.version>5.1.35</mysql.version>
+		<mysql.version>8.0.16</mysql.version>
 		<orc.version>1.6.2</orc.version>
 		<druid.version>1.0.19</druid.version>
 		<pgsql.version>42.2.6</pgsql.version>
