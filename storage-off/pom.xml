@@ -16,7 +16,7 @@
 		<mysql.version>5.1.35</mysql.version>
 		<orc.version>1.6.2</orc.version>
 		<druid.version>1.0.19</druid.version>
-		<pgsql.version>42.2.6</pgsql.version>
+		<pgsql.version>42.4.1</pgsql.version>
 		<dom4j.version>1.6.1</dom4j.version>
 	</properties>
 
